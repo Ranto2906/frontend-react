@@ -77,14 +77,14 @@ export default function Admin() {
         </Link>
 
         {/* Alerte */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 opacity-60">
+        {/* <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 opacity-60">
           <div className="text-3xl mb-3">🚨</div>
           <h2 className="text-lg font-semibold text-gray-800">Alertes</h2>
           <p className="text-sm text-gray-500 mt-1">
             Gérer les alertes et notifications système.
           </p>
           <p className="text-xs text-gray-400 mt-3 italic">Bientôt disponible...</p>
-        </div>
+        </div> */}
 
         {/* Audit */}
         <Link
