@@ -13,6 +13,7 @@ const navItems = [
   { to: '/roles', label: 'Rôles & Permissions', icon: '🛡️' },
   { to: '/journal', label: 'Journal connexions', icon: '📋' },
   { to: '/sessions', label: 'Sessions', icon: '🔐' },
+  { to: '/audit', label: 'Audit', icon: '📊' },
   { to: '/admin', label: 'Administration', icon: '⚙️' },
 ];
 

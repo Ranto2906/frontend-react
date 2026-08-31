@@ -79,6 +79,20 @@ export interface RoleWithPermissionsDTO {
   permissions: PermissionDTO[];
 }
 
+// ── Audit ──
+export interface AuditDTO {
+  idAudit: number;
+  entiteType: string;
+  entiteId: string;
+  action?: string;
+  anciennesValeurs?: string;
+  nouvellesValeurs?: string;
+  dateAction?: string;
+  ipAdresse?: string;
+  idUtilisateur?: number;
+  nomUtilisateur?: string;
+}
+
 // ── RBAC Referentiels ──
 export interface ModuleRBAC {
   idModule: number;

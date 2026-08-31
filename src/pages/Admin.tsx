@@ -87,14 +87,18 @@ export default function Admin() {
         </div>
 
         {/* Audit */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 opacity-60">
+        <Link
+          to="/audit"
+          className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-indigo-300 transition-all group"
+        >
           <div className="text-3xl mb-3">📊</div>
-          <h2 className="text-lg font-semibold text-gray-800">Audit</h2>
+          <h2 className="text-lg font-semibold text-gray-800 group-hover:text-indigo-600 transition-colors">
+            Audit
+          </h2>
           <p className="text-sm text-gray-500 mt-1">
             Traçabilité des actions et journal d'audit.
           </p>
-          <p className="text-xs text-gray-400 mt-3 italic">Bientôt disponible...</p>
-        </div>
+        </Link>
       </div>
     </div>
   );

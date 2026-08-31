@@ -3,7 +3,7 @@ import type {
   LoginRequest, LoginResponse, TokenRefreshRequest,
   UtilisateurDTO, CreateUtilisateurRequest, UpdateUtilisateurRequest,
   RoleDTO, CreateRoleRequest, RoleWithPermissionsDTO, PermissionDTO,
-  JournalConnexionDTO, SessionDTO, PageResponse,
+  JournalConnexionDTO, SessionDTO, AuditDTO, PageResponse,
   ModuleRBAC, EntiteRBAC, ActionRBAC,
 } from '../types';
 
@@ -215,6 +215,20 @@ export const adminApi = {
 
   nettoyerSessionsExpirees: () =>
     api.delete('/admin/sessions/expirees'),
+};
+
+// ── Audit API ──
+export const auditApi = {
+  lister: (page = 0, size = 20) =>
+    api.get<PageResponse<AuditDTO>>('/admin/audit', { params: { page, size } }).then((r) => r.data),
+
+  rechercher: (entiteType?: string, action?: string, search?: string, page = 0, size = 20) =>
+    api.get<PageResponse<AuditDTO>>('/admin/audit', {
+      params: { entiteType, action, search, page, size },
+    }).then((r) => r.data),
+
+  stats: () =>
+    api.get<Record<string, number>>('/admin/audit/stats').then((r) => r.data),
 };
 
 export { api, setTokens, clearTokens, getAccessToken, getRefreshToken };
