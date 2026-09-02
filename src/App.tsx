@@ -8,7 +8,8 @@ import Demandes from './pages/demandes/Demandes';
 import Patrimoine from './pages/patrimoine/Patrimoine';
 import SuiviTerrain from './pages/suivi/SuiviTerrain';
 import SuiviNotificationsHub from './pages/suivi-notifications/SuiviNotificationsHub';
-import GestionPersonne from './pages/suivi-notifications/GestionPersonne';
+import GestionPersonne from './pages/suivi-notifications/personne/GestionPersonne';
+import DetailPersonne from './pages/suivi-notifications/personne/DetailPersonne';
 import NotificationOccupation from './pages/suivi-notifications/NotificationOccupation';
 import Avertissement from './pages/suivi-notifications/Avertissement';
 import SuiviNotifications from './pages/suivi-notifications/SuiviNotifications';
@@ -44,6 +45,7 @@ export default function App() {
             <Route path="patrimoine" element={<Patrimoine />} />
             <Route path="suivi-notifications" element={<SuiviNotificationsHub />} />
             <Route path="suivi-notifications/personnes" element={<GestionPersonne />} />
+            <Route path="suivi-notifications/personnes/:id" element={<DetailPersonne />} />
             <Route path="suivi-notifications/occupation" element={<NotificationOccupation />} />
             <Route path="suivi-notifications/avertissements" element={<Avertissement />} />
             <Route path="suivi-notifications/suivi" element={<SuiviNotifications />} />

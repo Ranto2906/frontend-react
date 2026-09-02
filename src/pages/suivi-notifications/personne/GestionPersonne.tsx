@@ -1,12 +1,12 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
-import { Link } from 'react-router-dom';
-import { personService } from '../../services';
+import { Link, useNavigate } from 'react-router-dom';
+import { personService } from '../../../services';
 import type {
   Personne,
   CreatePersonneRequest,
   UpdatePersonneRequest,
   PageResponse,
-} from '../../types';
+} from '../../../types';
 
 // ── Types modaux ──
 type Modal =
@@ -28,6 +28,7 @@ const ROLE_COLORS: Record<string, string> = {
 // Composant principal
 // ══════════════════════════════════════════════════════════════
 export default function GestionPersonne() {
+  const navigate = useNavigate();
   const [personnes, setPersonnes] = useState<Personne[]>([]);
   const [page, setPage] = useState<PageResponse<Personne> | null>(null);
   const [search, setSearch] = useState('');
@@ -184,7 +185,13 @@ export default function GestionPersonne() {
                       <div className="w-8 h-8 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-xs font-bold">
                         {p.nom?.charAt(0).toUpperCase()}
                       </div>
-                      <span className="font-medium text-gray-800">{p.nom}</span>
+                      <button
+                        type="button"
+                        onClick={() => navigate(`/suivi-notifications/personnes/${p.idPersonne}`)}
+                        className="font-medium text-gray-800 hover:text-blue-600 hover:underline text-left"
+                      >
+                        {p.nom}
+                      </button>
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-600">{p.contact || '—'}</td>
@@ -210,6 +217,14 @@ export default function GestionPersonne() {
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      {/* 👁️ → navigue vers la page détail */}
+                      <button
+                        onClick={() => navigate(`/suivi-notifications/personnes/${p.idPersonne}`)}
+                        title="Voir la fiche"
+                        className="p-1.5 rounded-lg hover:bg-gray-100 text-gray-600 transition-colors"
+                      >
+                        👁️
+                      </button>
                       <button
                         onClick={() => setModal({ type: 'edit', personne: p })}
                         title="Modifier"
@@ -402,7 +417,7 @@ function CreatePersonneModal({
 }
 
 // ══════════════════════════════════════════════════════════════
-// MODAL : Modifier une personne (POST pour traçabilité)
+// MODAL : Modifier une personne
 // ══════════════════════════════════════════════════════════════
 function EditPersonneModal({
   personne,

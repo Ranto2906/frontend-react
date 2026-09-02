@@ -4,6 +4,7 @@ import type {
   CreatePersonneRequest,
   UpdatePersonneRequest,
   PageResponse,
+  AuditDTO,
 } from '../types';
 
 // ══════════════════════════════════════════════════════════════
@@ -42,4 +43,11 @@ export const personService = {
   // ── Supprimer ──
   supprimer: (id: number) =>
     api.delete(`/personnes/${id}`),
+
+  // ── Historique des modifications ──
+  historique: (id: number): Promise<AuditDTO[]> =>
+    api.get<AuditDTO[]>(`/personnes/${id}/historique`).then((r) => r.data),
+
+  derniereModification: (id: number): Promise<AuditDTO | null> =>
+    api.get<AuditDTO>(`/personnes/${id}/derniere-modification`).then((r) => r.data).catch(() => null),
 };
