@@ -15,13 +15,11 @@ type Modal =
   | { type: 'delete'; personne: Personne }
   | null;
 
-const ROLE_OPTIONS = ['Propriétaire', 'Occupant', 'Mandataire', 'Tiers'];
+const ROLE_OPTIONS = ['Notifié', 'Avertis'];
 
 const ROLE_COLORS: Record<string, string> = {
-  'Propriétaire': 'bg-blue-100 text-blue-800',
-  'Occupant': 'bg-green-100 text-green-800',
-  'Mandataire': 'bg-purple-100 text-purple-800',
-  'Tiers': 'bg-gray-100 text-gray-800',
+  'Notifié': 'bg-blue-100 text-blue-800',
+  'Avertis': 'bg-green-100 text-green-800',
 };
 
 // ══════════════════════════════════════════════════════════════
