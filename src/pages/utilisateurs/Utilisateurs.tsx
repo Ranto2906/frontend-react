@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { utilisateurApi, roleApi } from '../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { utilisateurService, roleService } from '../../services';
 import type {
   UtilisateurDTO, RoleDTO,
   CreateUtilisateurRequest, UpdateUtilisateurRequest,
   PageResponse,
-} from '../types';
+} from '../../types';
 
 // ── Types locaux ──
 type Modal =
@@ -32,14 +32,14 @@ export default function Utilisateurs() {
 
   // ── Charger les rôles disponibles ──
   useEffect(() => {
-    roleApi.lister().then(setAllRoles).catch(() => {});
+    roleService.lister().then(setAllRoles).catch(() => {});
   }, []);
 
   // ── Charger les utilisateurs ──
   const loadUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await utilisateurApi.lister(search || undefined, currentPage, 15);
+      const data = await utilisateurService.lister(search || undefined, currentPage, 15);
       setPage(data);
       setUsers(data.content);
     } catch {
@@ -71,7 +71,7 @@ export default function Utilisateurs() {
   // ── Actions ──
   const handleToggleActive = async (u: UtilisateurDTO) => {
     try {
-      await utilisateurApi.activerDesactiver(u.idUtilisateur, !u.actif);
+      await utilisateurService.activerDesactiver(u.idUtilisateur, !u.actif);
       showToast(u.actif ? 'Utilisateur désactivé' : 'Utilisateur activé');
       loadUsers();
     } catch {
@@ -81,7 +81,7 @@ export default function Utilisateurs() {
 
   const handleDelete = async (u: UtilisateurDTO) => {
     try {
-      await utilisateurApi.supprimer(u.idUtilisateur);
+      await utilisateurService.supprimer(u.idUtilisateur);
       showToast('Utilisateur supprimé');
       setModal(null);
       loadUsers();
@@ -92,7 +92,7 @@ export default function Utilisateurs() {
 
   const handleResetPassword = async (id: number, newPassword: string) => {
     try {
-      await utilisateurApi.reinitialiserMotDePasse(id, newPassword);
+      await utilisateurService.reinitialiserMotDePasse(id, newPassword);
       showToast('Mot de passe réinitialisé');
       setModal(null);
     } catch {
@@ -103,10 +103,10 @@ export default function Utilisateurs() {
   const handleSaveUser = async (data: CreateUtilisateurRequest | { id: number; data: UpdateUtilisateurRequest }) => {
     try {
       if ('id' in data) {
-        await utilisateurApi.mettreAJour(data.id, data.data);
+        await utilisateurService.mettreAJour(data.id, data.data);
         showToast('Utilisateur mis à jour');
       } else {
-        await utilisateurApi.creer(data);
+        await utilisateurService.creer(data);
         showToast('Utilisateur créé');
       }
       setModal(null);
@@ -119,7 +119,7 @@ export default function Utilisateurs() {
 
   const handleAssignRole = async (userId: number, idRole: number) => {
     try {
-      await utilisateurApi.attribuerRole(userId, idRole);
+      await utilisateurService.attribuerRole(userId, idRole);
       showToast('Rôle attribué');
       loadUsers();
     } catch {
@@ -129,7 +129,7 @@ export default function Utilisateurs() {
 
   const handleRemoveRole = async (userId: number, roleId: number) => {
     try {
-      await utilisateurApi.retirerRole(userId, roleId);
+      await utilisateurService.retirerRole(userId, roleId);
       showToast('Rôle retiré');
       loadUsers();
     } catch {

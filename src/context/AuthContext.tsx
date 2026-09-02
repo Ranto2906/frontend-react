@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type { ReactNode } from 'react';
 import type { UtilisateurDTO, LoginRequest } from '../types';
-import { authApi, setTokens, clearTokens, getAccessToken } from '../services/api';
+import { authService, setTokens, clearTokens, getAccessToken } from '../services';
 
 interface AuthContextType {
   user: UtilisateurDTO | null;
@@ -28,7 +28,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (stored) {
         setUser(JSON.parse(stored));
       }
-      const me = await authApi.getMe();
+      const me = await authService.getMe();
       setUser(me);
       localStorage.setItem('user', JSON.stringify(me));
     } catch {
@@ -44,7 +44,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [loadUser]);
 
   const login = async (request: LoginRequest) => {
-    const response = await authApi.login(request);
+    const response = await authService.login(request);
     setTokens(response.accessToken, response.refreshToken);
     setUser(response.utilisateur);
     localStorage.setItem('user', JSON.stringify(response.utilisateur));
@@ -53,7 +53,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = async () => {
     const refreshToken = localStorage.getItem('refreshToken');
     try {
-      await authApi.logout(refreshToken);
+      await authService.logout(refreshToken);
     } catch {
       // ignore logout errors
     }

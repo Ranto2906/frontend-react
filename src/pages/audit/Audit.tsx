@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { auditApi } from '../services/api';
-import type { AuditDTO, PageResponse } from '../types';
+import { useAuth } from '../../context/AuthContext';
+import { adminService } from '../../services';
+import type { AuditDTO, PageResponse } from '../../types';
 
 type Toast = { msg: string; ok: boolean } | null;
 
@@ -72,7 +72,7 @@ export default function Audit() {
   const loadAudit = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await auditApi.rechercher(
+      const data = await adminService.auditRechercher(
         filterEntite || undefined,
         filterAction || undefined,
         search || undefined,
@@ -90,7 +90,7 @@ export default function Audit() {
 
   const loadStats = useCallback(async () => {
     try {
-      const data = await auditApi.stats();
+      const data = await adminService.auditStats();
       setStats(data);
     } catch {
       // ignore

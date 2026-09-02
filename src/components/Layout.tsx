@@ -1,19 +1,15 @@
 import { Outlet, NavLink, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import seimadLogo from '../assets/logoseimad.jpg';
 
 const navItems = [
   { to: '/', label: 'Tableau de bord', icon: '📊' },
-  { to: '/demandes', label: 'Demandes', icon: '📁' },
-  { to: '/patrimoine', label: 'Patrimoine', icon: '🏘️' },
-  { to: '/suivi', label: 'Suivi terrain', icon: '🗺️' },
+  { to: '/demandes', label: 'Suivi de Dossier', icon: '📁' },
+  { to: '/suivi-notifications', label: 'Suivi des notifications', icon: '🔔' },
+  { to: '/suivi', label: 'Gestion des terrains', icon: '🗺️' },
   { to: '/carte', label: 'Carte', icon: '📍' },
   { to: '/signalements', label: 'Signalements', icon: '📢' },
   { to: '/finances', label: 'Finances', icon: '💰' },
-  { to: '/utilisateurs', label: 'Utilisateurs', icon: '👥' },
-  { to: '/roles', label: 'Rôles & Permissions', icon: '🛡️' },
-  { to: '/journal', label: 'Journal connexions', icon: '📋' },
-  { to: '/sessions', label: 'Sessions', icon: '🔐' },
-  { to: '/audit', label: 'Audit', icon: '📊' },
   { to: '/admin', label: 'Administration', icon: '⚙️' },
 ];
 
@@ -31,8 +27,9 @@ export default function Layout() {
       {/* Sidebar */}
       <aside className="w-64 bg-gray-900 text-white flex flex-col">
         <div className="p-4 border-b border-gray-700">
-          <h1 className="text-xl font-bold">🏛️ SEIMAD</h1>
-          <p className="text-xs text-gray-400 mt-1">Patrimoine Foncier</p>
+          
+          <h1><img src={seimadLogo} alt="SEIMAD" className="h-16 w-full object-contain object-left" />Patrimoine Foncier</h1>
+          
         </div>
 
         <nav className="flex-1 p-2 space-y-1 overflow-y-auto">

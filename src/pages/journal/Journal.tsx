@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { adminApi, utilisateurApi } from '../services/api';
-import type { JournalConnexionDTO, PageResponse } from '../types';
+import { useAuth } from '../../context/AuthContext';
+import { adminService } from '../../services';
+import type { JournalConnexionDTO, PageResponse } from '../../types';
 
 type Toast = { msg: string; ok: boolean } | null;
 
@@ -28,7 +28,7 @@ export default function Journal() {
     setLoading(true);
     try {
       if (selectedUser !== null) {
-        const data = await adminApi.journalUtilisateur(selectedUser);
+        const data = await adminService.journalUtilisateur(selectedUser);
         // Filter locally for user-specific view
         const filtered = filter === 'all'
           ? data
@@ -46,7 +46,7 @@ export default function Journal() {
           empty: filtered.length === 0,
         });
       } else {
-        const data = await adminApi.journal(currentPage, 20);
+        const data = await adminService.journal(currentPage, 20);
         let filtered = data.content;
         if (filter === 'success') filtered = data.content.filter((j) => j.succes);
         if (filter === 'failure') filtered = data.content.filter((j) => !j.succes);

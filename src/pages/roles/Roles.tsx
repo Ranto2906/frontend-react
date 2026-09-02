@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { roleApi } from '../services/api';
+import { useAuth } from '../../context/AuthContext';
+import { roleService } from '../../services';
 import type {
   RoleDTO, RoleWithPermissionsDTO, PermissionDTO,
   ModuleRBAC, EntiteRBAC, ActionRBAC,
   CreateRoleRequest,
-} from '../types';
+} from '../../types';
 
 type Modal =
   | { type: 'create' }
@@ -37,10 +37,10 @@ export default function Roles() {
     setLoading(true);
     try {
       const [r, m, e, a] = await Promise.all([
-        roleApi.lister(),
-        roleApi.listerModules(),
-        roleApi.listerEntites(),
-        roleApi.listerActions(),
+        roleService.lister(),
+        roleService.listerModules(),
+        roleService.listerEntites(),
+        roleService.listerActions(),
       ]);
       setRoles(r);
       setModules(m);
@@ -67,7 +67,7 @@ export default function Roles() {
 
   const handleCreate = async (data: CreateRoleRequest) => {
     try {
-      await roleApi.creer(data);
+      await roleService.creer(data);
       showToast('Rôle créé');
       setModal(null);
       loadAll();
@@ -79,7 +79,7 @@ export default function Roles() {
 
   const handleEdit = async (id: number, data: CreateRoleRequest) => {
     try {
-      await roleApi.mettreAJour(id, data);
+      await roleService.mettreAJour(id, data);
       showToast('Rôle mis à jour');
       setModal(null);
       loadAll();
@@ -91,7 +91,7 @@ export default function Roles() {
 
   const handleDelete = async (role: RoleDTO) => {
     try {
-      await roleApi.supprimer(role.idRole);
+      await roleService.supprimer(role.idRole);
       showToast('Rôle supprimé');
       setModal(null);
       loadAll();
@@ -103,7 +103,7 @@ export default function Roles() {
 
   const handleAssignPermission = async (idRole: number, idPermission: number) => {
     try {
-      await roleApi.attribuerPermission(idRole, idPermission);
+      await roleService.attribuerPermission(idRole, idPermission);
       showToast('Permission ajoutée');
       loadAll();
     } catch (err: unknown) {
@@ -114,7 +114,7 @@ export default function Roles() {
 
   const handleRemovePermission = async (idRole: number, idPermission: number) => {
     try {
-      await roleApi.retirerPermission(idRole, idPermission);
+      await roleService.retirerPermission(idRole, idPermission);
       showToast('Permission retirée');
       loadAll();
     } catch (err: unknown) {
@@ -221,7 +221,7 @@ function RoleCard({
       return;
     }
     try {
-      const data = await roleApi.trouverAvecPermissions(role.idRole);
+      const data = await roleService.trouverAvecPermissions(role.idRole);
       setDetails(data);
       setExpanded(true);
     } catch {
@@ -413,7 +413,7 @@ function PermissionsModal({
   const loadRole = useCallback(async () => {
     setLoading(true);
     try {
-      const data = await roleApi.trouverAvecPermissions(role.idRole);
+      const data = await roleService.trouverAvecPermissions(role.idRole);
       setRoleDetails(data);
     } catch {
       // ignore
@@ -431,7 +431,7 @@ function PermissionsModal({
   // On doit charger toutes les permissions depuis l'API
   const [allPermissions, setAllPermissions] = useState<PermissionDTO[]>([]);
   useEffect(() => {
-    roleApi.listerPermissions().then(setAllPermissions).catch(() => {});
+    roleService.listerPermissions().then(setAllPermissions).catch(() => {});
   }, []);
 
   // Grouper par entité
@@ -458,7 +458,7 @@ function PermissionsModal({
         await onAssign(role.idRole, idPermission);
       }
       // Recharger les détails du rôle
-      const updated = await roleApi.trouverAvecPermissions(role.idRole);
+      const updated = await roleService.trouverAvecPermissions(role.idRole);
       setRoleDetails(updated);
     } finally {
       setToggling(null);

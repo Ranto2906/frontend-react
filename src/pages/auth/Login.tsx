@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { useAuth } from '../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
+import seimadLogo from '../../assets/logoseimad.jpg';
 
 export default function Login() {
   const [nomUtilisateur, setNomUtilisateur] = useState('');
@@ -30,7 +31,7 @@ export default function Login() {
     <div className="min-h-screen bg-gradient-to-br from-blue-900 to-gray-900 flex items-center justify-center p-4">
       <div className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-8">
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-800">🏛️ SEIMAD</h1>
+          <img src={seimadLogo} alt="SEIMAD" className="mx-auto h-24 w-40 object-contain" />
           <p className="text-gray-500 mt-2">Gestion du Patrimoine Foncier</p>
         </div>
 

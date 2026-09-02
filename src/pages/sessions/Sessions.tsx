@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { adminApi } from '../services/api';
-import type { SessionDTO, PageResponse } from '../types';
+import { useAuth } from '../../context/AuthContext';
+import { adminService } from '../../services';
+import type { SessionDTO, PageResponse } from '../../types';
 
 type Toast = { msg: string; ok: boolean } | null;
 
@@ -29,7 +29,7 @@ export default function Sessions() {
     setLoading(true);
     try {
       if (selectedUser !== null) {
-        const data = await adminApi.sessionsUtilisateur(selectedUser);
+        const data = await adminService.sessionsUtilisateur(selectedUser);
         let filtered = data;
         if (filter === 'active') filtered = data.filter((s) => !s.revoque);
         if (filter === 'revoked') filtered = data.filter((s) => s.revoque);
@@ -45,7 +45,7 @@ export default function Sessions() {
           empty: filtered.length === 0,
         });
       } else {
-        const data = await adminApi.listerSessions(currentPage, 20);
+        const data = await adminService.listerSessions(currentPage, 20);
         let filtered = data.content;
         if (filter === 'active') filtered = data.content.filter((s) => !s.revoque);
         if (filter === 'revoked') filtered = data.content.filter((s) => s.revoque);
@@ -63,7 +63,7 @@ export default function Sessions() {
 
   const handleRevoke = async (idUtilisateur: number) => {
     try {
-      await adminApi.revoquerSessions(idUtilisateur);
+      await adminService.revoquerSessions(idUtilisateur);
       showToast('Sessions révoquées');
       setConfirmRevoke(null);
       loadSessions();
@@ -74,7 +74,7 @@ export default function Sessions() {
 
   const handleCleanExpired = async () => {
     try {
-      await adminApi.nettoyerSessionsExpirees();
+      await adminService.nettoyerSessionsExpirees();
       showToast('Sessions expirées nettoyées');
       setConfirmClean(false);
       loadSessions();
