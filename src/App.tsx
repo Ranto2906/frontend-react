@@ -7,6 +7,12 @@ import Dashboard from './pages/dashboard/Dashboard';
 import Demandes from './pages/demandes/Demandes';
 import Patrimoine from './pages/patrimoine/Patrimoine';
 import SuiviTerrain from './pages/suivi/SuiviTerrain';
+import GestionVille from './pages/suivi/terrain/GestionVille';
+import GestionPropriete from './pages/suivi/terrain/GestionPropriete';
+import GestionTitreFoncier from './pages/suivi/terrain/GestionTitreFoncier';
+import GestionPrixM2 from './pages/suivi/terrain/GestionPrixM2';
+import DetailPrixM2 from './pages/suivi/terrain/DetailPrixM2';
+import GestionParcelle from './pages/suivi/terrain/GestionParcelle';
 import SuiviNotificationsHub from './pages/suivi-notifications/SuiviNotificationsHub';
 import GestionPersonne from './pages/suivi-notifications/personne/GestionPersonne';
 import DetailPersonne from './pages/suivi-notifications/personne/DetailPersonne';
@@ -50,6 +56,12 @@ export default function App() {
             <Route path="suivi-notifications/avertissements" element={<Avertissement />} />
             <Route path="suivi-notifications/suivi" element={<SuiviNotifications />} />
             <Route path="suivi" element={<SuiviTerrain />} />
+            <Route path="suivi/villes" element={<GestionVille />} />
+            <Route path="suivi/proprietes" element={<GestionPropriete />} />
+            <Route path="suivi/titres-fonciers" element={<GestionTitreFoncier />} />
+            <Route path="suivi/prix-m2" element={<GestionPrixM2 />} />
+            <Route path="suivi/prix-m2/:id" element={<DetailPrixM2 />} />
+            <Route path="suivi/parcelles" element={<GestionParcelle />} />
             <Route path="carte" element={<Carte />} />
             <Route path="signalements" element={<Signalements />} />
             <Route path="finances" element={<Finances />} />
