@@ -44,7 +44,6 @@ export type {
 export type {
   Dossier,
   DossierDemandeurDTO,
-  Demandeur,
   DossierParcelleDTO,
   Etape,
   StatutDossier,
@@ -55,12 +54,21 @@ export type {
 // Suivi terrain
 export type {
   NotificationOccupation,
+  NotificationPersonne,
+  NotificationPersonneRequest,
+  NotificationOccupationRequest,
   Avertissement,
+  AvertissementRequest,
+  SuiviNotification,
+  SuiviNotificationRequest,
   Personne,
+  TypePersonne,
+  PhotoDTO,
   CreatePersonneRequest,
   UpdatePersonneRequest,
   DescenteTerrain,
   Geometrie,
+  ImportExcelResult,
 } from './suivi';
 
 // Signalements

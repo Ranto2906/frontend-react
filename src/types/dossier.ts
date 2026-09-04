@@ -1,3 +1,5 @@
+import type { Personne } from './suivi';
+
 export interface Dossier {
   idDossier: number;
   numeroDossier: string;
@@ -23,19 +25,10 @@ export interface Dossier {
 
 export interface DossierDemandeurDTO {
   idDossier: number;
-  idDemandeur: number;
+  idPersonne: number;
   role: string;
   dateAjout?: string;
-  demandeur?: Demandeur;
-}
-
-export interface Demandeur {
-  idDemandeur: number;
-  nomPrenom: string;
-  contact?: string;
-  email?: string;
-  telephone?: string;
-  adresse?: string;
+  personne?: Personne;
 }
 
 export interface DossierParcelleDTO {

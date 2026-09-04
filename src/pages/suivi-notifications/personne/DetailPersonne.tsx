@@ -4,9 +4,12 @@ import { personService } from '../../../services';
 import type { Personne, AuditDTO } from '../../../types';
 
 const ROLE_COLORS: Record<string, string> = {
-  'Propriétaire': 'bg-blue-100 text-blue-800',
+  'Notifié': 'bg-blue-100 text-blue-800',
+  'Averti': 'bg-red-100 text-red-800',
+  'Avertis': 'bg-red-100 text-red-800',
+  'Propriétaire': 'bg-purple-100 text-purple-800',
   'Occupant': 'bg-green-100 text-green-800',
-  'Mandataire': 'bg-purple-100 text-purple-800',
+  'Mandataire': 'bg-amber-100 text-amber-800',
   'Tiers': 'bg-gray-100 text-gray-800',
 };
 
@@ -16,6 +19,16 @@ const FIELD_LABELS: Record<string, string> = {
   email: 'Email',
   adresse: 'Adresse',
   role: 'Rôle',
+  typePersonne: 'Type',
+};
+
+const TYPE_COLORS: Record<string, string> = {
+  'DEMANDEUR': 'bg-blue-100 text-blue-800',
+  'NOTIFIE': 'bg-blue-100 text-blue-800',
+  'AVERTI': 'bg-red-100 text-red-800',
+  'OCCUPANT': 'bg-green-100 text-green-800',
+  'PROPRIETAIRE': 'bg-purple-100 text-purple-800',
+  'MANDATAIRE': 'bg-amber-100 text-amber-800',
 };
 
 export default function DetailPersonne() {
@@ -138,7 +151,7 @@ export default function DetailPersonne() {
               <th className="text-left px-4 py-3 font-medium text-gray-600">Contact</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Email</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Adresse</th>
-              <th className="text-center px-4 py-3 font-medium text-gray-600">Rôle</th>
+              <th className="text-center px-4 py-3 font-medium text-gray-600">Type</th>
               <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
             </tr>
           </thead>
@@ -156,7 +169,15 @@ export default function DetailPersonne() {
               <td className="px-4 py-3 text-gray-600">{personne.email || '—'}</td>
               <td className="px-4 py-3 text-gray-600 text-xs">{personne.adresse || '—'}</td>
               <td className="px-4 py-3 text-center">
-                {personne.role ? (
+                {personne.libelleTypePersonne ? (
+                  <span
+                    className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                      TYPE_COLORS[personne.codeTypePersonne || ''] || 'bg-gray-100 text-gray-800'
+                    }`}
+                  >
+                    {personne.libelleTypePersonne}
+                  </span>
+                ) : personne.role ? (
                   <span
                     className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                       ROLE_COLORS[personne.role] || 'bg-gray-100 text-gray-800'
@@ -204,7 +225,7 @@ export default function DetailPersonne() {
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Contact</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Email</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Adresse</th>
-                  <th className="text-center px-4 py-3 font-medium text-gray-600">Rôle</th>
+                  <th className="text-center px-4 py-3 font-medium text-gray-600">Type</th>
                   <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
                 </tr>
               </thead>
@@ -246,7 +267,13 @@ export default function DetailPersonne() {
                         <td className="px-4 py-3 text-gray-600">{anciennes?.email || '—'}</td>
                         <td className="px-4 py-3 text-gray-600 text-xs">{anciennes?.adresse || '—'}</td>
                         <td className="px-4 py-3 text-center">
-                          {anciennes?.role ? (
+                          {anciennes?.typePersonne ? (
+                            <span
+                              className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-100 text-gray-700"
+                            >
+                              {anciennes.typePersonne}
+                            </span>
+                          ) : anciennes?.role ? (
                             <span
                               className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                                 ROLE_COLORS[anciennes.role] || 'bg-gray-100 text-gray-800'
@@ -286,22 +313,24 @@ export default function DetailPersonne() {
                                   </span>
                                 )}
                               </div>
-                            </div>
-                            <div className="grid grid-cols-4 gap-4">
-                              <div>
-                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Contact</p>
-                                <p className="text-sm text-gray-800">{anciennes.contact || '—'}</p>
+                            </div>                              <div className="grid grid-cols-4 gap-4">
+                                <div>
+                                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Contact</p>
+                                  <p className="text-sm text-gray-800">{anciennes.contact || '—'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Email</p>
+                                  <p className="text-sm text-gray-800">{anciennes.email || '—'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Adresse</p>
+                                  <p className="text-sm text-gray-800">{anciennes.adresse || '—'}</p>
+                                </div>
+                                <div>
+                                  <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Type</p>
+                                  <p className="text-sm text-gray-800">{anciennes.typePersonne || '—'}</p>
+                                </div>
                               </div>
-                              <div>
-                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Email</p>
-                                <p className="text-sm text-gray-800">{anciennes.email || '—'}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Adresse</p>
-                                <p className="text-sm text-gray-800">{anciennes.adresse || '—'}</p>
-                              </div>
-                              
-                            </div>
                           </td>
                         </tr>
                       )}

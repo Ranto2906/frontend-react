@@ -1,6 +1,7 @@
 import api from './api';
 import type {
   Personne,
+  TypePersonne,
   CreatePersonneRequest,
   UpdatePersonneRequest,
   PageResponse,
@@ -12,6 +13,10 @@ import type {
 // ══════════════════════════════════════════════════════════════
 
 export const personService = {
+  // ── Types de personne (référentiel) ──
+  listerTypes: (): Promise<TypePersonne[]> =>
+    api.get<TypePersonne[]>('/personnes/types').then((r) => r.data),
+
   // ── Liste paginée ──
   lister: (page = 0, size = 20): Promise<PageResponse<Personne>> =>
     api.get<PageResponse<Personne>>('/personnes', { params: { page, size } }).then((r) => r.data),

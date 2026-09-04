@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { personService } from '../../../services';
 import type {
   Personne,
+  TypePersonne,
   CreatePersonneRequest,
   UpdatePersonneRequest,
   PageResponse,
@@ -15,12 +16,26 @@ type Modal =
   | { type: 'delete'; personne: Personne }
   | null;
 
-const ROLE_OPTIONS = ['Notifié', 'Avertis'];
-
 const ROLE_COLORS: Record<string, string> = {
   'Notifié': 'bg-blue-100 text-blue-800',
-  'Avertis': 'bg-green-100 text-green-800',
+  'Averti': 'bg-red-100 text-red-800',
+  'Avertis': 'bg-red-100 text-red-800',
+  'Occupant': 'bg-green-100 text-green-800',
+  'Propriétaire': 'bg-purple-100 text-purple-800',
+  'Mandataire': 'bg-amber-100 text-amber-800',
+  'Tiers': 'bg-gray-100 text-gray-800',
 };
+
+const TYPE_COLORS: Record<string, string> = {
+  'DEMANDEUR': 'bg-blue-100 text-blue-800',
+  'NOTIFIE': 'bg-blue-100 text-blue-800',
+  'AVERTI': 'bg-red-100 text-red-800',
+  'OCCUPANT': 'bg-green-100 text-green-800',
+  'PROPRIETAIRE': 'bg-purple-100 text-purple-800',
+  'MANDATAIRE': 'bg-amber-100 text-amber-800',
+};
+
+
 
 // ══════════════════════════════════════════════════════════════
 // Composant principal
@@ -34,6 +49,7 @@ export default function GestionPersonne() {
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<Modal>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [types, setTypes] = useState<TypePersonne[]>([]);
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -59,6 +75,15 @@ export default function GestionPersonne() {
   useEffect(() => {
     loadPersonnes();
   }, [loadPersonnes]);
+
+  // ── Charger les référentiels type / statut ──
+  useEffect(() => {
+    personService.listerTypes()
+      .then(setTypes)
+      .catch(() => {
+        /* référentiel des types indisponible */
+      });
+  }, []);
 
   // ── Recherche avec reset page ──
   const handleSearch = (value: string) => {
@@ -170,7 +195,7 @@ export default function GestionPersonne() {
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Contact</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Email</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Adresse</th>
-                <th className="text-center px-4 py-3 font-medium text-gray-600">Rôle</th>
+                <th className="text-center px-4 py-3 font-medium text-gray-600">Type</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
               </tr>
@@ -196,7 +221,15 @@ export default function GestionPersonne() {
                   <td className="px-4 py-3 text-gray-600">{p.email || '—'}</td>
                   <td className="px-4 py-3 text-gray-600 text-xs">{p.adresse || '—'}</td>
                   <td className="px-4 py-3 text-center">
-                    {p.role ? (
+                    {p.libelleTypePersonne ? (
+                      <span
+                        className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                          TYPE_COLORS[p.codeTypePersonne || ''] || 'bg-gray-100 text-gray-800'
+                        }`}
+                      >
+                        {p.libelleTypePersonne}
+                      </span>
+                    ) : p.role ? (
                       <span
                         className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
                           ROLE_COLORS[p.role] || 'bg-gray-100 text-gray-800'
@@ -208,6 +241,7 @@ export default function GestionPersonne() {
                       <span className="text-xs text-gray-400 italic">—</span>
                     )}
                   </td>
+                 
                   <td className="px-4 py-3 text-gray-600 text-xs">
                     {p.date
                       ? new Date(p.date).toLocaleDateString('fr-FR')
@@ -273,11 +307,16 @@ export default function GestionPersonne() {
 
       {/* ── Modaux ── */}
       {modal?.type === 'create' && (
-        <CreatePersonneModal onSave={handleCreate} onClose={() => setModal(null)} />
+        <CreatePersonneModal
+          types={types}
+          onSave={handleCreate}
+          onClose={() => setModal(null)}
+        />
       )}
       {modal?.type === 'edit' && (
         <EditPersonneModal
           personne={modal.personne}
+          types={types}
           onSave={handleUpdate}
           onClose={() => setModal(null)}
         />
@@ -297,9 +336,11 @@ export default function GestionPersonne() {
 // MODAL : Créer une personne
 // ══════════════════════════════════════════════════════════════
 function CreatePersonneModal({
+  types,
   onSave,
   onClose,
 }: {
+  types: TypePersonne[];
   onSave: (data: CreatePersonneRequest) => Promise<void>;
   onClose: () => void;
 }) {
@@ -315,6 +356,8 @@ function CreatePersonneModal({
 
   const set = (field: keyof CreatePersonneRequest, value: string) =>
     setForm((f) => ({ ...f, [field]: value }));
+  const setNum = (field: keyof CreatePersonneRequest, value: string) =>
+    setForm((f) => ({ ...f, [field]: value ? Number(value) : undefined }));
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -376,20 +419,23 @@ function CreatePersonneModal({
             placeholder="ex: Analakely, Antananarivo"
           />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Rôle</label>
-            <select
-              value={form.role || ''}
-              onChange={(e) => set('role', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-            >
-              <option value="">— Sélectionner —</option>
-              {ROLE_OPTIONS.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+              <select
+                value={form.idTypePersonne ?? ''}
+                onChange={(e) => setNum('idTypePersonne', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              >
+                <option value="">— Sélectionner —</option>
+                {types.map((t) => (
+                  <option key={t.idTypePersonne} value={t.idTypePersonne}>
+                    {t.libelle}
+                  </option>
+                ))}
+              </select>
+            </div>
+           
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
@@ -419,10 +465,12 @@ function CreatePersonneModal({
 // ══════════════════════════════════════════════════════════════
 function EditPersonneModal({
   personne,
+  types,
   onSave,
   onClose,
 }: {
   personne: Personne;
+  types: TypePersonne[];
   onSave: (id: number, data: UpdatePersonneRequest) => Promise<void>;
   onClose: () => void;
 }) {
@@ -432,6 +480,7 @@ function EditPersonneModal({
     email: personne.email || '',
     adresse: personne.adresse || '',
     role: personne.role || '',
+    idTypePersonne: personne.idTypePersonne ?? '',
   });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
@@ -451,6 +500,7 @@ function EditPersonneModal({
         email: form.email.trim() || undefined,
         adresse: form.adresse.trim() || undefined,
         role: form.role || undefined,
+        idTypePersonne: form.idTypePersonne !== '' ? Number(form.idTypePersonne) : undefined,
       });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Erreur';
@@ -492,20 +542,22 @@ function EditPersonneModal({
             onChange={(v) => set('adresse', v)}
           />
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Rôle</label>
-            <select
-              value={form.role}
-              onChange={(e) => set('role', e.target.value)}
-              className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
-            >
-              <option value="">— Sélectionner —</option>
-              {ROLE_OPTIONS.map((r) => (
-                <option key={r} value={r}>
-                  {r}
-                </option>
-              ))}
-            </select>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Type</label>
+              <select
+                value={form.idTypePersonne}
+                onChange={(e) => set('idTypePersonne', e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+              >
+                <option value="">— Sélectionner —</option>
+                {types.map((t) => (
+                  <option key={t.idTypePersonne} value={t.idTypePersonne}>
+                    {t.libelle}
+                  </option>
+                ))}
+              </select>
+            </div>
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">

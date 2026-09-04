@@ -17,7 +17,7 @@ export interface DocumentDemandeur {
   tailleOctets?: number;
   dateUpload?: string;
   idUtilisateur?: number;
-  idDemandeur: number;
+  idPersonne: number;
 }
 
 export interface Alerte {
