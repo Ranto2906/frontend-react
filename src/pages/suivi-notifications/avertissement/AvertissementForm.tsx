@@ -2,16 +2,17 @@ import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   avertissementService,
+  documentDemandeurService,
   personService,
-  titreFoncierService,
+  proprieteService,
   parcelleService,
 } from '../../../services';
+import PersonneDocumentsPicker, { type DocumentEnAttente } from '../../../components/PersonneDocumentsPicker';
 import type {
-  Avertissement,
+  Propriete,
   AvertissementRequest,
   Personne,
   TypePersonne,
-  TitreFoncier,
   Parcelle,
 } from '../../../types';
 
@@ -30,7 +31,7 @@ export default function AvertissementForm() {
 
   const [form, setForm] = useState({
     idPersonne: '',
-    idTitreFoncier: '',
+    idPropriete: '',
     idParcelle: '',
     dateAvertissement: '',
     informationsOccupants: '',
@@ -41,7 +42,7 @@ export default function AvertissementForm() {
   });
 
   // Référentiels
-  const [titres, setTitres] = useState<TitreFoncier[]>([]);
+  const [proprietes, setProprietes] = useState<Propriete[]>([]);
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [types, setTypes] = useState<TypePersonne[]>([]);
 
@@ -52,16 +53,17 @@ export default function AvertissementForm() {
   const [typeTouch, setTypeTouch] = useState(false);
   const [creatingPersonne, setCreatingPersonne] = useState(false);
   const [npMsg, setNpMsg] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [documentsNouvellePersonne, setDocumentsNouvellePersonne] = useState<DocumentEnAttente[]>([]);
 
   const set = (field: keyof typeof form, value: string) =>
     setForm((f) => ({ ...f, [field]: value }));
 
   // ── Charger les référentiels ──
   useEffect(() => {
-    titreFoncierService
+    proprieteService
       .lister(0, 500)
-      .then((d) => setTitres(d.content))
-      .catch(() => setError('Impossible de charger les titres fonciers'));
+      .then((d) => setProprietes(d.content))
+      .catch(() => setError('Impossible de charger les propriétés'));
     personService
       .lister(0, 1000)
       .then((d) => setPersonnesOptions(d.content))
@@ -79,13 +81,13 @@ export default function AvertissementForm() {
       .catch(() => {});
   }, []);
 
-  const chargerParcelles = useCallback(async (idTitre: string) => {
-    if (!idTitre) {
+  const chargerParcelles = useCallback(async (idPropriete: string) => {
+    if (!idPropriete) {
       setParcelles([]);
       return;
     }
     try {
-      const data = await parcelleService.listerParTitreFoncier(idTitre);
+      const data = await parcelleService.listerParPropriete(Number(idPropriete));
       setParcelles(data);
     } catch {
       setParcelles([]);
@@ -101,7 +103,7 @@ export default function AvertissementForm() {
       .then((a) => {
         setForm({
           idPersonne: a.idPersonne != null ? String(a.idPersonne) : '',
-          idTitreFoncier: a.idTitreFoncier || '',
+          idPropriete: a.idPropriete != null ? String(a.idPropriete) : '',
           idParcelle: a.idParcelle || '',
           dateAvertissement: a.dateAvertissement || '',
           informationsOccupants: a.informationsOccupants || '',
@@ -110,7 +112,7 @@ export default function AvertissementForm() {
           aFaire: a.aFaire || '',
           mission: a.mission || '',
         });
-        return a.idTitreFoncier;
+        return a.idPropriete != null ? String(a.idPropriete) : '';
       })
       .then((idTitre) => {
         if (idTitre) return chargerParcelles(idTitre);
@@ -120,10 +122,10 @@ export default function AvertissementForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isEdit]);
 
-  const handleTitreChange = (idTitre: string) => {
-    set('idTitreFoncier', idTitre);
+  const handleProprieteChange = (idPropriete: string) => {
+    set('idPropriete', idPropriete);
     set('idParcelle', '');
-    chargerParcelles(idTitre);
+    chargerParcelles(idPropriete);
   };
 
   // ── Nouvelle personne (checkbox) : créer puis sélectionner ──
@@ -143,12 +145,20 @@ export default function AvertissementForm() {
         role: 'Averti',
         idTypePersonne: np.idTypePersonne ? Number(np.idTypePersonne) : undefined,
       });
+      for (const document of documentsNouvellePersonne) {
+        await documentDemandeurService.ajouter({
+          fichier: document.fichier,
+          idPersonne: p.idPersonne,
+          typeDocument: document.typeDocument,
+        });
+      }
       // La nouvelle personne est sélectionnée comme « personne avertie »
       setPersonnesOptions((prev) =>
         prev.some((x) => x.idPersonne === p.idPersonne) ? prev : [...prev, p]
       );
       set('idPersonne', String(p.idPersonne));
       setNp({ nom: '', contact: '', adresse: '', idTypePersonne: '' });
+      setDocumentsNouvellePersonne([]);
       const averti = types.find((x) => x.code === CODE_TYPE_AVERTI);
       if (averti && !typeTouch) {
         setNp((prev) => ({ ...prev, idTypePersonne: String(averti.idTypePersonne) }));
@@ -169,7 +179,7 @@ export default function AvertissementForm() {
     e.preventDefault();
     setError('');
     if (!form.idPersonne) return setError('La personne est obligatoire');
-    if (!form.idTitreFoncier) return setError('Le titre foncier est obligatoire');
+    if (!form.idPropriete) return setError('La propriété est obligatoire');
     if (!form.idParcelle) return setError('La parcelle est obligatoire');
 
     const anneeSource = form.dateAvertissement
@@ -186,7 +196,7 @@ export default function AvertissementForm() {
       mission: form.mission.trim() || undefined,
       idPersonne: Number(form.idPersonne),
       idParcelle: form.idParcelle,
-      idTitreFoncier: form.idTitreFoncier,
+      idPropriete: Number(form.idPropriete),
     };
 
     setSaving(true);
@@ -260,7 +270,7 @@ export default function AvertissementForm() {
               <p className="text-gray-500 text-sm mt-0.5">
                 {isEdit
                   ? "Corrigez les informations puis enregistrez — l'historique gardera la trace."
-                  : "Renseignez la personne avertie, le titre foncier et les constats."}
+                  : "Renseignez la personne avertie, la propriété et les constats."}
               </p>
             </div>
             <Link
@@ -283,114 +293,19 @@ export default function AvertissementForm() {
               <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide mb-3">
                 🗂️ Références
               </h2>
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className={labelCls}>Personne avertie *</label>
-                  <div className="space-y-2">
-                    {nouvellePersonne ? (
-                      <div className="space-y-2 rounded-lg border border-red-200 bg-red-50/50 p-2">
-                        <input
-                          type="text"
-                          value={np.nom}
-                          onChange={(e) => setNp((f) => ({ ...f, nom: e.target.value }))}
-                          placeholder="Nom complet de la nouvelle personne *"
-                          className={champCls + ' bg-white'}
-                        />
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                          <input
-                            type="text"
-                            value={np.contact}
-                            onChange={(e) => setNp((f) => ({ ...f, contact: e.target.value }))}
-                            placeholder="Contact (téléphone)"
-                            className={champCls + ' bg-white'}
-                          />
-                          <input
-                            type="text"
-                            value={np.adresse}
-                            onChange={(e) => setNp((f) => ({ ...f, adresse: e.target.value }))}
-                            placeholder="Adresse"
-                            className={champCls + ' bg-white'}
-                          />
-                        </div>
-                        <div className="flex items-start gap-2">
-                          <select
-                            value={np.idTypePersonne}
-                            onChange={(e) => {
-                              setNp((f) => ({ ...f, idTypePersonne: e.target.value }));
-                              setTypeTouch(true);
-                            }}
-                            className={champCls + ' bg-white flex-1'}
-                          >
-                            <option value="">Type de personne (auto)</option>
-                            {types.map((t) => (
-                              <option key={t.idTypePersonne} value={t.idTypePersonne}>
-                                {t.libelle}
-                              </option>
-                            ))}
-                          </select>
-                          <button
-                            type="button"
-                            onClick={creerEtSelectionnerPersonne}
-                            disabled={creatingPersonne || !np.nom.trim()}
-                            className="px-3 py-2 text-sm bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white rounded-lg font-medium transition-colors whitespace-nowrap"
-                          >
-                            {creatingPersonne ? 'Création...' : '👤 Créer & sélectionner'}
-                          </button>
-                        </div>
-                        {npMsg && (
-                          <p
-                            className={`text-xs px-3 py-1.5 rounded-lg ${
-                              npMsg.ok
-                                ? 'bg-green-50 text-green-700 border border-green-200'
-                                : 'bg-red-50 text-red-700 border border-red-200'
-                            }`}
-                          >
-                            {npMsg.msg}
-                          </p>
-                        )}
-                      </div>
-                    ) : (
-                      <select
-                        value={form.idPersonne}
-                        onChange={(e) => set('idPersonne', e.target.value)}
-                        className={champCls}
-                      >
-                        <option value="">— Sélectionner —</option>
-                        {personnesOptions.map((p) => (
-                          <option key={p.idPersonne} value={p.idPersonne}>
-                            {p.nom}
-                            {p.libelleTypePersonne ? ` (${p.libelleTypePersonne})` : p.role ? ` (${p.role})` : ''}
-                          </option>
-                        ))}
-                      </select>
-                    )}
-                    <label className="flex items-center gap-2 text-xs font-medium text-red-700 cursor-pointer select-none">
-                      <input
-                        type="checkbox"
-                        checked={nouvellePersonne}
-                        onChange={(e) => {
-                          setNouvellePersonne(e.target.checked);
-                          if (e.target.checked) setNpMsg(null);
-                        }}
-                        className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
-                      />
-                      La personne n'existe pas encore — la créer
-                    </label>
-                  </div>
-                </div>
-
-                <div>
-                  <label className={labelCls}>Titre foncier *</label>
+                  <label className={labelCls}>Propriété *</label>
                   <select
-                    value={form.idTitreFoncier}
-                    onChange={(e) => handleTitreChange(e.target.value)}
+                    value={form.idPropriete}
+                    onChange={(e) => handleProprieteChange(e.target.value)}
                     className={champCls}
                   >
                     <option value="">— Sélectionner —</option>
-                    {titres.map((t) => (
-                      <option key={t.idTitreFoncier} value={t.idTitreFoncier}>
-                        TF n° {t.numero}
-                        {t.nomPropriete ? ` — ${t.nomPropriete}` : ''}
+                    {proprietes.map((p) => (
+                      <option key={p.idPropriete} value={p.idPropriete}>
+                        {p.nom}
+                        {p.numero ? ` — ${p.numero}` : ''}
                       </option>
                     ))}
                   </select>
@@ -401,7 +316,7 @@ export default function AvertissementForm() {
                   <select
                     value={form.idParcelle}
                     onChange={(e) => set('idParcelle', e.target.value)}
-                    disabled={!form.idTitreFoncier}
+                    disabled={!form.idPropriete}
                     className={champCls}
                   >
                     <option value="">— Sélectionner —</option>
@@ -494,6 +409,103 @@ export default function AvertissementForm() {
                     />
                   </div>
                 </div>
+              </div>
+            </section>
+
+            {/* ── Personne avertie ── */}
+            <section>
+              <div className="flex items-center justify-between mb-3">
+                <h2 className="text-sm font-bold text-gray-500 uppercase tracking-wide">
+                  👤 Personne avertie
+                </h2>
+                <label className="inline-flex items-center gap-2 text-xs font-medium text-red-700 cursor-pointer select-none bg-red-50 border border-red-200 rounded-lg px-3 py-1.5 hover:bg-red-100 transition-colors">
+                  <input
+                    type="checkbox"
+                    checked={nouvellePersonne}
+                    onChange={(e) => {
+                      setNouvellePersonne(e.target.checked);
+                      if (e.target.checked) setNpMsg(null);
+                    }}
+                    className="w-4 h-4 rounded border-gray-300 text-red-600 focus:ring-red-500"
+                  />
+                  La personne n'existe pas encore — la créer
+                </label>
+              </div>
+
+              <div className="border border-gray-200 rounded-lg p-4 bg-gray-50 space-y-3">
+                {nouvellePersonne ? (
+                  <div className="space-y-3">
+                    <div className="flex flex-col md:flex-row items-stretch gap-2">
+                      <input
+                        type="text"
+                        value={np.nom}
+                        onChange={(e) => setNp((f) => ({ ...f, nom: e.target.value }))}
+                        placeholder="Nom complet de la nouvelle personne *"
+                        className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-red-500 focus:border-transparent outline-none bg-white"
+                      />
+                      <button
+                        type="button"
+                        onClick={creerEtSelectionnerPersonne}
+                        disabled={creatingPersonne || !np.nom.trim()}
+                        className="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 disabled:bg-red-300 text-white rounded-lg font-medium transition-colors whitespace-nowrap"
+                      >
+                        {creatingPersonne ? 'Création...' : '👤 Créer & sélectionner'}
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-2">
+                      <input
+                        type="text"
+                        value={np.contact}
+                        onChange={(e) => setNp((f) => ({ ...f, contact: e.target.value }))}
+                        placeholder="Contact (téléphone)"
+                        className={champCls + ' bg-white'}
+                      />
+                      <input
+                        type="text"
+                        value={np.adresse}
+                        onChange={(e) => setNp((f) => ({ ...f, adresse: e.target.value }))}
+                        placeholder="Adresse"
+                        className={champCls + ' bg-white'}
+                      />
+                      <select
+                        value={np.idTypePersonne}
+                        onChange={(e) => {
+                          setNp((f) => ({ ...f, idTypePersonne: e.target.value }));
+                          setTypeTouch(true);
+                        }}
+                        className={champCls + ' bg-white'}
+                      >
+                        <option value="">Type de personne (auto)</option>
+                        {types.map((t) => (
+                          <option key={t.idTypePersonne} value={t.idTypePersonne}>{t.libelle}</option>
+                        ))}
+                      </select>
+                    </div>
+                    {npMsg && (
+                      <p className={`text-xs px-3 py-1.5 rounded-lg ${npMsg.ok ? 'bg-green-50 text-green-700 border border-green-200' : 'bg-red-50 text-red-700 border border-red-200'}`}>
+                        {npMsg.msg}
+                      </p>
+                    )}
+                    <PersonneDocumentsPicker
+                      documents={documentsNouvellePersonne}
+                      onChange={setDocumentsNouvellePersonne}
+                    />
+                  </div>
+                ) : (
+                  <select
+                    value={form.idPersonne}
+                    onChange={(e) => set('idPersonne', e.target.value)}
+                    className={champCls}
+                  >
+                    <option value="">— Sélectionner une personne —</option>
+                    {personnesOptions.map((p) => (
+                      <option key={p.idPersonne} value={p.idPersonne}>
+                        {p.nom}
+                        {p.libelleTypePersonne ? ` (${p.libelleTypePersonne})` : p.role ? ` (${p.role})` : ''}
+                      </option>
+                    ))}
+                  </select>
+                )}
               </div>
             </section>
 

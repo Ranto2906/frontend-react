@@ -442,9 +442,6 @@ function PermissionsModal({
     else entitesByModule.set(e.codeModule, [e]);
   }
 
-  // Créer un index rapide permissionId → PermissionDTO
-  const permById = new Map(allPermissions.map((p) => [p.idPermission, p]));
-
   const filteredModules = selectedModule === 'all'
     ? modules
     : modules.filter((m) => m.codeModule === selectedModule);

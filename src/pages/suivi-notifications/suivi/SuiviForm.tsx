@@ -167,7 +167,7 @@ export default function SuiviForm() {
                     <span className="text-lg">📄</span>
                     <span>
                       <span className="font-medium text-gray-800">
-                        TF n° {suivi.numeroTitre || '—'} · Lot n° {suivi.numeroLot || '—'}
+                        Propriété n° {suivi.numeroPropriete || '—'} · Lot n° {suivi.numeroLot || '—'}
                       </span>
                       {suivi.dateNotification && (
                         <span className="block text-xs text-gray-500">
@@ -191,7 +191,7 @@ export default function SuiviForm() {
                     <option value="">— Sélectionner une notification —</option>
                     {notifications.map((n) => (
                       <option key={n.idNotification} value={n.idNotification}>
-                        TF n° {n.numeroTitre || '—'} · Lot n° {n.numeroLot || '—'}
+                        Propriété n° {n.numeroPropriete || '—'} · Lot n° {n.numeroLot || '—'}
                         {n.dateNotification
                           ? ` — ${new Date(n.dateNotification + 'T00:00:00').toLocaleDateString('fr-FR')}`
                           : ''}

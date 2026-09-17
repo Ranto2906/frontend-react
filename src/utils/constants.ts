@@ -38,7 +38,7 @@ export const ENTITE_TYPES = [
   { value: 'dossier', label: '📁 Dossier' },
   { value: 'utilisateur', label: '👤 Utilisateur' },
   { value: 'parcelle', label: '🗺️ Parcelle' },
-  { value: 'titre_foncier', label: '📄 Titre foncier' },
+  { value: 'propriete', label: '🏘️ Propriété' },
   { value: 'propriete', label: '🏘️ Propriété' },
   { value: 'geometrie', label: '📍 Géométrie' },
   { value: 'signalement', label: '📢 Signalement' },

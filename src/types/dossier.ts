@@ -1,5 +1,11 @@
 import type { Personne } from './suivi';
 
+// ════════════════════════════════════════════════════════════
+// Types du module Suivi de Dossier
+// ════════════════════════════════════════════════════════════
+
+// ── Types hérités (conservés pour compatibilité) ──
+
 export interface Dossier {
   idDossier: number;
   numeroDossier: string;
@@ -37,8 +43,6 @@ export interface DossierParcelleDTO {
   idTitreFoncier: string;
   idParcelle?: string;
   superficieM2?: number;
-  valeurDemandeTtc?: number;
-  valeurDemandeHt?: number;
   observation?: string;
   coordonneeX?: number;
   coordonneeY?: number;
@@ -50,6 +54,13 @@ export interface DossierParcelleDTO {
 export interface Etape {
   idEtape: number;
   codeEtape: string;
+  libelle: string;
+  ordre: number;
+  dureePrevisionnelle?: number;
+}
+
+export interface EtapeRequest {
+  codeEtape?: string;
   libelle: string;
   ordre: number;
   dureePrevisionnelle?: number;
@@ -85,4 +96,126 @@ export interface SuiviDossierDTO {
   idEtape: number;
   codeEtape?: string;
   libelleEtape?: string;
+}
+
+// ── Types du module (DTO backend /api/dossiers) ──
+
+export interface DemandeDossier {
+  idDossier: number;
+  numeroDossier: string;
+  dateDemande?: string | null;
+  annee?: number | null;
+  transmission?: string | null;
+  resultatEtude?: string | null;
+  observation?: string | null;
+  dateCreation?: string;
+  dateModification?: string;
+  dateValidation?: string | null;
+  montantTotal?: string | number | null;
+  // Statut
+  idStatutDossier?: number | null;
+  codeStatut?: string | null;
+  libelleStatut?: string | null;
+  couleurStatutHex?: string | null;
+  statutFinal?: boolean | null;
+  // Ville
+  idVille: number;
+  nomVille?: string;
+  // Demandeurs
+  demandeurs?: DemandeDossierDemandeur[];
+  // Parcelles demandées
+  parcelles?: ParcelleDemandee[];
+  // Suivi (étapes)
+  suivi?: SuiviEtape[];
+  // Avancement
+  etapeActuelleOrdre?: number | null;
+  etapeActuelleLibelle?: string | null;
+  nombreEtapesRealisees?: number;
+}
+
+export interface DemandeDossierDemandeur {
+  idPersonne: number;
+  nom: string;
+  contact?: string | null;
+  email?: string | null;
+  adresse?: string | null;
+  role?: string | null;
+  codeTypePersonne?: string | null;
+  libelleTypePersonne?: string | null;
+}
+
+export interface ParcelleDemandee {
+  idDossierParcelle?: string;
+  idPropriete?: number;
+  nomPropriete?: string | null;
+  numeroPropriete?: string | null;
+  idParcelle?: string | null;
+  numeroLot?: string | null;
+  superficieM2?: number | null;
+  observation?: string | null;
+}
+
+export interface ParcelleDemandeeRequest {
+  idPropriete: number;
+  idParcelle?: string;
+  superficieM2?: number;
+  observation?: string;
+}
+
+export interface SuiviEtape {
+  idSuivi: number;
+  idEtape: number;
+  codeEtape: string;
+  libelleEtape: string;
+  ordreEtape: number;
+  dureePrevisionnelle?: number | null;
+  dateRealisation?: string | null;
+  idStatutCouleur?: number | null;
+  codeStatutCouleur?: string | null;
+  libelleStatutCouleur?: string | null;
+  couleurStatutCouleurHex?: string | null;
+  commentaire?: string | null;
+  nomUtilisateur?: string | null;
+  dateCreation?: string;
+  dateModification?: string;
+}
+
+export interface DemandeDossierRequest {
+  numeroDossier: string;
+  dateDemande?: string;
+  annee?: number;
+  transmission?: string;
+  resultatEtude?: string;
+  observation?: string;
+  dateValidation?: string;
+  montantTotal?: number;
+  idStatutDossier?: number;
+  idVille: number;
+  demandeurs?: DemandeDossierDemandeurRequest[];
+  parcelles?: ParcelleDemandeeRequest[];
+}
+
+export interface DemandeDossierDemandeurRequest {
+  idPersonne?: number;
+  nom?: string;
+  contact?: string;
+  email?: string;
+  adresse?: string;
+  role?: string;
+  idTypePersonne?: number;
+}
+
+export interface SuiviEtapeRequest {
+  idEtape: number;
+  dateRealisation?: string;
+  idStatutCouleur?: number;
+  commentaire?: string;
+}
+
+export interface StatistiquesDossier {
+  total: number;
+  finalises: number;
+  enCours: number;
+  anneeEnCours: number;
+  parStatut: Array<{ statut: string; nombre: number }>;
 }

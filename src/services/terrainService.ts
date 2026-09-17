@@ -2,7 +2,6 @@ import api from './api';
 import type {
   Ville,
   Propriete,
-  TitreFoncier,
   PrixM2,
   Parcelle,
   PageResponse,
@@ -23,30 +22,20 @@ export interface UpdateVilleRequest {
 
 export interface CreateProprieteRequest {
   nom: string;
-  idVille: number;
+  numero?: string;
+  zone?: string;
+  localisation?: string;
+  superficieTotale?: number;
+  idVille?: number;
 }
 
 export interface UpdateProprieteRequest {
   nom: string;
-  idVille: number;
-}
-
-export interface CreateTitreFoncierRequest {
-  numero: string;
-  typeTitre?: string;
+  numero?: string;
   zone?: string;
   localisation?: string;
   superficieTotale?: number;
-  idPropriete: number;
-}
-
-export interface UpdateTitreFoncierRequest {
-  numero: string;
-  typeTitre?: string;
-  zone?: string;
-  localisation?: string;
-  superficieTotale?: number;
-  idPropriete: number;
+  idVille?: number;
 }
 
 export interface CreatePrixM2Request {
@@ -69,14 +58,14 @@ export interface CreateParcelleRequest {
   numeroLot?: string;
   superficieM2?: number;
   observation?: string;
-  idTitreFoncier: string;
+  idPropriete: number;
 }
 
 export interface UpdateParcelleRequest {
   numeroLot?: string;
   superficieM2?: number;
   observation?: string;
-  idTitreFoncier: string;
+  idPropriete: number;
 }
 
 // ══════════════════════════════════════════════════════════════
@@ -112,10 +101,10 @@ export const villeService = {
 
 export const proprieteService = {
   lister: (page = 0, size = 20): Promise<PageResponse<Propriete>> =>
-    api.get<PageResponse<Propriete>>('/proprietes', { params: { page, size } }).then((r) => r.data),
+    api.get<PageResponse<Propriete>>('/proprietes', { params: { page, size, sort: 'nom,asc' } }).then((r) => r.data),
 
   rechercher: (search: string, page = 0, size = 20): Promise<PageResponse<Propriete>> =>
-    api.get<PageResponse<Propriete>>('/proprietes/search', { params: { search, page, size } }).then((r) => r.data),
+    api.get<PageResponse<Propriete>>('/proprietes/search', { params: { search, page, size, sort: 'nom,asc' } }).then((r) => r.data),
 
   listerParVille: (idVille: number): Promise<Propriete[]> =>
     api.get<Propriete[]>(`/proprietes/ville/${idVille}`).then((r) => r.data),
@@ -131,30 +120,6 @@ export const proprieteService = {
 
   supprimer: (id: number) =>
     api.delete(`/proprietes/${id}`),
-};
-
-// ══════════════════════════════════════════════════════════════
-// Titres Fonciers
-// ══════════════════════════════════════════════════════════════
-
-export const titreFoncierService = {
-  lister: (page = 0, size = 20): Promise<PageResponse<TitreFoncier>> =>
-    api.get<PageResponse<TitreFoncier>>('/titres-fonciers', { params: { page, size } }).then((r) => r.data),
-
-  trouverParId: (id: string): Promise<TitreFoncier> =>
-    api.get<TitreFoncier>(`/titres-fonciers/${id}`).then((r) => r.data),
-
-  rechercherParNumero: (numero: string): Promise<TitreFoncier> =>
-    api.get<TitreFoncier>(`/titres-fonciers/numero/${numero}`).then((r) => r.data),
-
-  creer: (request: CreateTitreFoncierRequest): Promise<TitreFoncier> =>
-    api.post<TitreFoncier>('/titres-fonciers', request).then((r) => r.data),
-
-  modifier: (id: string, request: UpdateTitreFoncierRequest): Promise<TitreFoncier> =>
-    api.put<TitreFoncier>(`/titres-fonciers/${id}`, request).then((r) => r.data),
-
-  supprimer: (id: string) =>
-    api.delete(`/titres-fonciers/${id}`),
 };
 
 // ══════════════════════════════════════════════════════════════
@@ -195,8 +160,8 @@ export const parcelleService = {
   lister: (page = 0, size = 20): Promise<PageResponse<Parcelle>> =>
     api.get<PageResponse<Parcelle>>('/parcelles', { params: { page, size } }).then((r) => r.data),
 
-  listerParTitreFoncier: (idTitreFoncier: string): Promise<Parcelle[]> =>
-    api.get<Parcelle[]>(`/parcelles/titre-foncier/${idTitreFoncier}`).then((r) => r.data),
+  listerParPropriete: (idPropriete: number): Promise<Parcelle[]> =>
+    api.get<Parcelle[]>(`/parcelles/propriete/${idPropriete}`).then((r) => r.data),
 
   trouverParId: (id: string): Promise<Parcelle> =>
     api.get<Parcelle>(`/parcelles/${id}`).then((r) => r.data),

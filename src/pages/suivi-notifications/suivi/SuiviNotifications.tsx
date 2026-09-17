@@ -176,7 +176,7 @@ export default function SuiviNotifications() {
                         title="Voir la notification"
                       >
                         <span className="block font-medium text-gray-800 hover:text-blue-600">
-                          TF n° {s.numeroTitre || '—'}
+                          Propriété n° {s.numeroPropriete || '—'}
                         </span>
                         <span className="block text-xs text-gray-500">
                           Lot n° {s.numeroLot || '—'}
@@ -302,7 +302,7 @@ function DeleteModal({
           <p className="text-sm text-gray-700">
             Êtes-vous sûr de vouloir supprimer le{' '}
             <strong>
-              suivi n° {suivi.ordre ?? '—'} du TF n° {suivi.numeroTitre || '—'}
+              suivi n° {suivi.ordre ?? '—'} de la propriété n° {suivi.numeroPropriete || '—'}
             </strong>{' '}
             ?
           </p>

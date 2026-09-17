@@ -16,7 +16,7 @@ const FIELDS: { key: string; label: string }[] = [
   { key: 'dateNotification', label: 'Date notification' },
   { key: 'annee', label: 'Année' },
   { key: 'dateConvocation', label: 'Date convocation' },
-  { key: 'numeroTitre', label: 'N° titre foncier' },
+  { key: 'numeroPropriete', label: 'N° propriété' },
   { key: 'numeroLot', label: 'N° lot' },
   { key: 'informationsOccupants', label: 'Informations occupants' },
   { key: 'constats', label: 'Constats' },
@@ -25,7 +25,7 @@ const FIELDS: { key: string; label: string }[] = [
   { key: 'personnes', label: 'Personnes liées' },
 ];
 
-function formatAuditValue(key: string, val: unknown): string {
+function formatAuditValue(val: unknown): string {
   if (val === null || val === undefined || val === '') return '—';
   if (typeof val === 'string') {
     if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
@@ -160,7 +160,7 @@ export default function DetailNotificationOccupation() {
         </Link>
         <span className="text-gray-300">/</span>
         <span className="text-gray-700 font-medium">
-          TF n° {notif.numeroTitre || '—'} · Lot n° {notif.numeroLot || '—'}
+          Propriété n° {notif.numeroPropriete || '—'} · Lot n° {notif.numeroLot || '—'}
         </span>
       </div>
 
@@ -168,7 +168,7 @@ export default function DetailNotificationOccupation() {
         <h1 className="text-2xl font-bold text-gray-800">
           🏠 Notification d'Occupation{' '}
           <span className="text-gray-400 font-normal text-lg">
-            — TF n° {notif.numeroTitre || '—'} · Lot n° {notif.numeroLot || '—'}
+            — Propriété n° {notif.numeroPropriete || '—'} · Lot n° {notif.numeroLot || '—'}
           </span>
         </h1>
         <div className="flex items-center gap-2">
@@ -198,8 +198,8 @@ export default function DetailNotificationOccupation() {
           {/* Identité & dates */}
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-6">
             <div>
-              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Titre foncier</p>
-              <p className="text-sm font-medium text-gray-800">TF n° {notif.numeroTitre || '—'}</p>
+              <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Propriété</p>
+              <p className="text-sm font-medium text-gray-800">Propriété n° {notif.numeroPropriete || '—'}</p>
             </div>
             <div>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Parcelle</p>
@@ -369,8 +369,8 @@ export default function DetailNotificationOccupation() {
                           <StatutBadge statut={avant?.statut} />
                         </td>
                         <td className="px-4 py-3 text-gray-600 text-xs">
-                          {avant?.numeroTitre || avant?.numeroLot
-                            ? `TF n° ${avant.numeroTitre || '—'} · Lot n° ${avant.numeroLot || '—'}`
+                          {avant?.numeroPropriete || avant?.numeroLot
+                            ? `Propriété n° ${avant.numeroPropriete || '—'} · Lot n° ${avant.numeroLot || '—'}`
                             : '—'}
                         </td>
                         <td className="px-4 py-3 text-gray-600 text-xs">
@@ -408,7 +408,7 @@ export default function DetailNotificationOccupation() {
                                             {f.label}
                                           </p>
                                           <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">
-                                            {formatAuditValue(f.key, anciennes[f.key])}
+                                            {formatAuditValue(anciennes[f.key])}
                                           </p>
                                         </div>
                                       ))}
@@ -435,7 +435,7 @@ export default function DetailNotificationOccupation() {
                                                 : 'text-gray-800'
                                             }`}
                                           >
-                                            {formatAuditValue(f.key, nouvelles[f.key])}
+                                            {formatAuditValue(nouvelles[f.key])}
                                           </p>
                                         </div>
                                       ))}

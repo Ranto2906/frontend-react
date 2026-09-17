@@ -36,7 +36,6 @@ export type {
   Ville,
   PrixM2,
   Propriete,
-  TitreFoncier,
   Parcelle,
 } from './patrimoine';
 
@@ -49,6 +48,16 @@ export type {
   StatutDossier,
   StatutCouleur,
   SuiviDossierDTO,
+  DemandeDossier,
+  DemandeDossierDemandeur,
+  SuiviEtape,
+  DemandeDossierRequest,
+  DemandeDossierDemandeurRequest,
+  SuiviEtapeRequest,
+  StatistiquesDossier,
+  EtapeRequest,
+  ParcelleDemandee,
+  ParcelleDemandeeRequest,
 } from './dossier';
 
 // Suivi terrain
@@ -69,6 +78,7 @@ export type {
   DescenteTerrain,
   Geometrie,
   ImportExcelResult,
+  ImportSituationDemandesResult,
 } from './suivi';
 
 // Signalements
@@ -76,6 +86,10 @@ export type {
   Signalement,
   TypeSignalement,
   StatutSignalement,
+  SignalementRequest,
+  SignalementTraitementRequest,
+  SignalementAudit,
+  StatistiquesSignalement,
 } from './signalement';
 
 // Documents & Alertes

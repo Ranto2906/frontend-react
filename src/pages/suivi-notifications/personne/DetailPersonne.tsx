@@ -2,6 +2,7 @@ import { useState, useEffect, Fragment } from 'react';
 import { useParams, Link, useNavigate } from 'react-router-dom';
 import { personService } from '../../../services';
 import type { Personne, AuditDTO } from '../../../types';
+import DocumentsDemandeur from '../../demandes/DocumentsDemandeur';
 
 const ROLE_COLORS: Record<string, string> = {
   'Notifié': 'bg-blue-100 text-blue-800',
@@ -11,15 +12,6 @@ const ROLE_COLORS: Record<string, string> = {
   'Occupant': 'bg-green-100 text-green-800',
   'Mandataire': 'bg-amber-100 text-amber-800',
   'Tiers': 'bg-gray-100 text-gray-800',
-};
-
-const FIELD_LABELS: Record<string, string> = {
-  nom: 'Nom',
-  contact: 'Contact',
-  email: 'Email',
-  adresse: 'Adresse',
-  role: 'Rôle',
-  typePersonne: 'Type',
 };
 
 const TYPE_COLORS: Record<string, string> = {
@@ -197,6 +189,15 @@ export default function DetailPersonne() {
             </tr>
           </tbody>
         </table>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200">
+          <h2 className="text-lg font-bold text-gray-800">📎 Documents liés</h2>
+        </div>
+        <div className="px-6 py-4">
+          <DocumentsDemandeur idPersonne={personne.idPersonne} nom={personne.nom} compact />
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">

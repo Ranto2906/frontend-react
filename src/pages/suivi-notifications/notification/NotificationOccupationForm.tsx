@@ -2,17 +2,18 @@ import { useState, useEffect, useCallback, useRef, type ChangeEvent, type FormEv
 import { Link, useNavigate, useParams } from 'react-router-dom';
 import {
   notificationOccupationService,
+  documentDemandeurService,
   personService,
   photoService,
-  titreFoncierService,
+  proprieteService,
   parcelleService,
 } from '../../../services';
+import PersonneDocumentsPicker, { type DocumentEnAttente } from '../../../components/PersonneDocumentsPicker';
 import type {
-  NotificationOccupation,
+  Propriete,
   NotificationOccupationRequest,
   Personne,
   TypePersonne,
-  TitreFoncier,
   Parcelle,
 } from '../../../types';
 
@@ -69,7 +70,7 @@ export default function NotificationOccupationForm() {
 
   const [form, setForm] = useState({
     statut: 'En cours',
-    idTitreFoncier: '',
+    idPropriete: '',
     idParcelle: '',
     dateNotification: '',
     dateConvocation: '',
@@ -81,7 +82,7 @@ export default function NotificationOccupationForm() {
   const [personnesLiees, setPersonnesLiees] = useState<PersonneLiee[]>([]);
 
   // Référentiels
-  const [titres, setTitres] = useState<TitreFoncier[]>([]);
+  const [proprietes, setProprietes] = useState<Propriete[]>([]);
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [types, setTypes] = useState<TypePersonne[]>([]);
 
@@ -94,6 +95,7 @@ export default function NotificationOccupationForm() {
   const [typeTouch, setTypeTouch] = useState(false);
   const [creatingPersonne, setCreatingPersonne] = useState(false);
   const [npMsg, setNpMsg] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [documentsNouvellePersonne, setDocumentsNouvellePersonne] = useState<DocumentEnAttente[]>([]);
 
   // Photos à joindre
   const [photosAjout, setPhotosAjout] = useState<PhotoAjout[]>([]);
@@ -114,10 +116,10 @@ export default function NotificationOccupationForm() {
 
   // ── Charger les référentiels ──
   useEffect(() => {
-    titreFoncierService
+    proprieteService
       .lister(0, 500)
-      .then((d) => setTitres(d.content))
-      .catch(() => setError('Impossible de charger les titres fonciers'));
+      .then((d) => setProprietes(d.content))
+      .catch(() => setError('Impossible de charger les propriétés'));
     personService
       .lister(0, 1000)
       .then((d) => setPersonnesOptions(d.content))
@@ -128,13 +130,13 @@ export default function NotificationOccupationForm() {
       .catch(() => {});
   }, []);
 
-  const chargerParcelles = useCallback(async (idTitre: string) => {
-    if (!idTitre) {
+  const chargerParcelles = useCallback(async (idPropriete: string) => {
+    if (!idPropriete) {
       setParcelles([]);
       return;
     }
     try {
-      const data = await parcelleService.listerParTitreFoncier(idTitre);
+      const data = await parcelleService.listerParPropriete(Number(idPropriete));
       setParcelles(data);
     } catch {
       setParcelles([]);
@@ -150,7 +152,7 @@ export default function NotificationOccupationForm() {
       .then((n) => {
         setForm({
           statut: n.statut || 'En cours',
-          idTitreFoncier: n.idTitreFoncier || '',
+          idPropriete: n.idPropriete != null ? String(n.idPropriete) : '',
           idParcelle: n.idParcelle || '',
           dateNotification: n.dateNotification || '',
           dateConvocation: n.dateConvocation ? n.dateConvocation.substring(0, 16) : '',
@@ -166,7 +168,7 @@ export default function NotificationOccupationForm() {
             role: p.roleDansNotification || 'Notifié',
           })) || []
         );
-        return n.idTitreFoncier;
+        return n.idPropriete != null ? String(n.idPropriete) : '';
       })
       .then((idTitre) => {
         if (idTitre) return chargerParcelles(idTitre);
@@ -176,10 +178,10 @@ export default function NotificationOccupationForm() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, isEdit]);
 
-  const handleTitreChange = (idTitre: string) => {
-    set('idTitreFoncier', idTitre);
+  const handleProprieteChange = (idPropriete: string) => {
+    set('idPropriete', idPropriete);
     set('idParcelle', '');
-    chargerParcelles(idTitre);
+    chargerParcelles(idPropriete);
   };
 
   // ── Personnes existantes ──
@@ -229,6 +231,13 @@ export default function NotificationOccupationForm() {
         role: roleSel,
         idTypePersonne: np.idTypePersonne ? Number(np.idTypePersonne) : undefined,
       });
+      for (const document of documentsNouvellePersonne) {
+        await documentDemandeurService.ajouter({
+          fichier: document.fichier,
+          idPersonne: p.idPersonne,
+          typeDocument: document.typeDocument,
+        });
+      }
       if (!personnesLiees.some((x) => x.idPersonne === p.idPersonne)) {
         setPersonnesLiees((prev) => [
           ...prev,
@@ -240,6 +249,7 @@ export default function NotificationOccupationForm() {
         prev.some((x) => x.idPersonne === p.idPersonne) ? prev : [...prev, p]
       );
       setNp({ nom: '', contact: '', adresse: '', idTypePersonne: '' });
+      setDocumentsNouvellePersonne([]);
       setTypeTouch(false);
       setNpMsg({ msg: `✓ « ${p.nom} » créée et liée comme « ${roleSel} »`, ok: true });
     } catch (err: unknown) {
@@ -285,7 +295,7 @@ export default function NotificationOccupationForm() {
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!form.idTitreFoncier) return setError('Le titre foncier est obligatoire');
+    if (!form.idPropriete) return setError('La propriété est obligatoire');
     if (!form.idParcelle) return setError('La parcelle est obligatoire');
     if (!form.statut) return setError('Le statut est obligatoire');
 
@@ -295,7 +305,7 @@ export default function NotificationOccupationForm() {
 
     const payload: NotificationOccupationRequest = {
       statut: form.statut,
-      idTitreFoncier: form.idTitreFoncier,
+      idPropriete: Number(form.idPropriete),
       idParcelle: form.idParcelle,
       dateNotification: form.dateNotification || undefined,
       annee: Number.isNaN(anneeSource) ? undefined : anneeSource,
@@ -416,7 +426,7 @@ export default function NotificationOccupationForm() {
               <p className="text-gray-500 text-sm mt-0.5">
                 {isEdit
                   ? "Corrigez les informations puis enregistrez — l'historique gardera la trace."
-                  : 'Renseignez le titre foncier, les dates et les personnes concernées.'}
+                  : 'Renseignez la propriété, les dates et les personnes concernées.'}
               </p>
             </div>
             <Link
@@ -441,17 +451,17 @@ export default function NotificationOccupationForm() {
               </h2>
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div>
-                  <label className={labelCls}>Titre foncier *</label>
+                  <label className={labelCls}>Propriété *</label>
                   <select
-                    value={form.idTitreFoncier}
-                    onChange={(e) => handleTitreChange(e.target.value)}
+                    value={form.idPropriete}
+                    onChange={(e) => handleProprieteChange(e.target.value)}
                     className={champCls}
                   >
                     <option value="">— Sélectionner —</option>
-                    {titres.map((t) => (
-                      <option key={t.idTitreFoncier} value={t.idTitreFoncier}>
-                        TF n° {t.numero}
-                        {t.nomPropriete ? ` — ${t.nomPropriete}` : ''}
+                    {proprietes.map((p) => (
+                      <option key={p.idPropriete} value={p.idPropriete}>
+                        {p.nom}
+                        {p.numero ? ` — ${p.numero}` : ''}
                       </option>
                     ))}
                   </select>
@@ -461,7 +471,7 @@ export default function NotificationOccupationForm() {
                   <select
                     value={form.idParcelle}
                     onChange={(e) => set('idParcelle', e.target.value)}
-                    disabled={!form.idTitreFoncier}
+                    disabled={!form.idPropriete}
                     className={champCls}
                   >
                     <option value="">— Sélectionner —</option>
@@ -785,6 +795,10 @@ export default function NotificationOccupationForm() {
                         {npMsg.msg}
                       </p>
                     )}
+                    <PersonneDocumentsPicker
+                      documents={documentsNouvellePersonne}
+                      onChange={setDocumentsNouvellePersonne}
+                    />
                   </div>
                 ) : (
                   /* ── Sélection d'une personne existante ── */

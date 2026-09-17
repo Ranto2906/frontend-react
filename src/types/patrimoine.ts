@@ -18,21 +18,12 @@ export interface PrixM2 {
 export interface Propriete {
   idPropriete: number;
   nom: string;
-  idVille?: number;
-  nomVille?: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
-
-export interface TitreFoncier {
-  idTitreFoncier: string;
-  numero: string;
-  typeTitre: string;
+  numero?: string;
   zone?: string;
   localisation?: string;
   superficieTotale?: number;
-  idPropriete: number;
-  nomPropriete?: string;
+  idVille?: number;
+  nomVille?: string;
   createdAt?: string;
   updatedAt?: string;
 }
@@ -42,8 +33,13 @@ export interface Parcelle {
   numeroLot?: string;
   superficieM2?: number;
   observation?: string;
-  idTitreFoncier: string;
-  numeroTitre?: string;
+  idPropriete: number;
+  numeroPropriete?: string;
+  /** Champs enrichis (détail parcelle — renvoyés par le backend). */
+  nomPropriete?: string;
+  zonePropriete?: string;
+  localisationPropriete?: string;
+  nomVille?: string;
   idUtilisateurCreation?: number;
   createdAt?: string;
   updatedAt?: string;

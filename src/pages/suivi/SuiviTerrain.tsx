@@ -20,20 +20,6 @@ export default function SuiviTerrain() {
           </p>
         </Link>
 
-        {/* Titre Foncier */}
-        <Link
-          to="/suivi/titres-fonciers"
-          className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-green-300 transition-all group"
-        >
-          <div className="text-3xl mb-3">📄</div>
-          <h2 className="text-lg font-semibold text-gray-800 group-hover:text-green-600 transition-colors">
-            Titre Foncier
-          </h2>
-          <p className="text-sm text-gray-500 mt-1">
-            Gérer les titres fonciers : numéros, types, zones et localisations.
-          </p>
-        </Link>
-
         {/* Propriété */}
         <Link
           to="/suivi/proprietes"
@@ -44,7 +30,7 @@ export default function SuiviTerrain() {
             Propriété
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            Gérer les propriétés et leur rattachement aux villes.
+            Gérer les propriétés, leurs références, leurs zones et leurs superficies.
           </p>
         </Link>
 

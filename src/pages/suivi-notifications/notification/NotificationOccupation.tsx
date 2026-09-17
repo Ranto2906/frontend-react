@@ -164,7 +164,7 @@ export default function NotificationOccupation() {
           <table className="w-full text-sm">
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Titre foncier / Lot</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Propriété / Lot</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Date notification</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Convocation</th>
                 <th className="text-center px-4 py-3 font-medium text-gray-600">Statut</th>
@@ -183,7 +183,7 @@ export default function NotificationOccupation() {
                       title="Voir la fiche & l'historique"
                     >
                       <span className="block font-medium text-gray-800 hover:text-blue-600">
-                        TF n° {n.numeroTitre || '—'}
+                        Propriété n° {n.numeroPropriete || n.idPropriete || '—'}
                       </span>
                       <span className="block text-xs text-gray-500">Lot n° {n.numeroLot || '—'}</span>
                     </button>
@@ -320,7 +320,7 @@ function DeleteModal({
           <p className="text-sm text-gray-700">
             Êtes-vous sûr de vouloir supprimer la notification du{' '}
             <strong>
-              TF n° {notif.numeroTitre || '—'} · Lot n° {notif.numeroLot || '—'}
+              Propriété n° {notif.numeroPropriete || notif.idPropriete || '—'} · Lot n° {notif.numeroLot || '—'}
             </strong>{' '}
             ?
           </p>

@@ -159,7 +159,7 @@ export default function Avertissement() {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Personne</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Titre foncier / Lot</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Propriété / Lot</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Date avertissement</th>
                 <th className="text-center px-4 py-3 font-medium text-gray-600">Année</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Mission</th>
@@ -194,7 +194,7 @@ export default function Avertissement() {
                       title="Voir la fiche & l'historique"
                     >
                       <span className="block font-medium text-gray-800 hover:text-blue-600">
-                        TF n° {a.numeroTitre || '—'}
+                        Propriété n° {a.numeroPropriete || a.idPropriete || '—'}
                       </span>
                       <span className="block text-xs text-gray-500">Lot n° {a.numeroLot || '—'}</span>
                     </button>
@@ -306,7 +306,7 @@ function DeleteModal({
           <p className="text-sm text-gray-700">
             Êtes-vous sûr de vouloir supprimer l'avertissement de{' '}
             <strong>{avert.nomPersonne || `Personne #${avert.idPersonne}`}</strong> pour le{' '}
-            <strong>TF n° {avert.numeroTitre || '—'} · Lot n° {avert.numeroLot || '—'}</strong> ?
+            <strong>Propriété n° {avert.numeroPropriete || avert.idPropriete || '—'} · Lot n° {avert.numeroLot || '—'}</strong> ?
           </p>
           <p className="text-xs text-red-600 mt-2">Cette action est irréversible.</p>
           <div className="flex justify-end gap-3 mt-6">

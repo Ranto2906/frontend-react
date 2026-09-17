@@ -8,7 +8,7 @@ const navItems = [
   { to: '/suivi-notifications', label: 'Suivi des notifications', icon: '🔔' },
   { to: '/suivi', label: 'Gestion des terrains', icon: '🗺️' },
   { to: '/carte', label: 'Carte', icon: '📍' },
-  { to: '/signalements', label: 'Signalements', icon: '📢' },
+  { to: '/gestion-mobile', label: 'Gestion mobile', icon: '📱' },
   { to: '/finances', label: 'Finances', icon: '💰' },
   { to: '/admin', label: 'Administration', icon: '⚙️' },
 ];

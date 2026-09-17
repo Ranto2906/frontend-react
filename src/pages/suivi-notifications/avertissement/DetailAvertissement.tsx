@@ -9,7 +9,7 @@ const FIELDS: { key: string; label: string }[] = [
   { key: 'personne', label: 'Personne' },
   { key: 'dateAvertissement', label: "Date avertissement" },
   { key: 'annee', label: 'Année' },
-  { key: 'numeroTitre', label: 'N° titre foncier' },
+  { key: 'numeroPropriete', label: 'N° propriété' },
   { key: 'numeroLot', label: 'N° lot' },
   { key: 'informationsOccupants', label: 'Informations occupants' },
   { key: 'constats', label: 'Constats' },
@@ -18,7 +18,7 @@ const FIELDS: { key: string; label: string }[] = [
   { key: 'mission', label: 'Mission' },
 ];
 
-function formatAuditValue(key: string, val: unknown): string {
+function formatAuditValue(val: unknown): string {
   if (val === null || val === undefined || val === '') return '—';
   if (typeof val === 'string') {
     if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
@@ -147,7 +147,7 @@ export default function DetailAvertissement() {
         <h1 className="text-2xl font-bold text-gray-800">
           ⚠️ Avertissement{' '}
           <span className="text-gray-400 font-normal text-lg">
-            — {avert.nomPersonne || `Personne #${avert.idPersonne}`} · TF n° {avert.numeroTitre || '—'}
+            — {avert.nomPersonne || `Personne #${avert.idPersonne}`} · Propriété n° {avert.numeroPropriete || '—'}
           </span>
         </h1>
         <div className="flex items-center gap-2">
@@ -213,9 +213,9 @@ export default function DetailAvertissement() {
             </div>
             <div>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">
-                Titre foncier
+                Propriété
               </p>
-              <p className="text-sm font-medium text-gray-800">TF n° {avert.numeroTitre || '—'}</p>
+              <p className="text-sm font-medium text-gray-800">Propriété n° {avert.numeroPropriete || '—'}</p>
             </div>
             <div>
               <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Parcelle</p>
@@ -337,8 +337,8 @@ export default function DetailAvertissement() {
                           {avant?.personne || '—'}
                         </td>
                         <td className="px-4 py-3 text-gray-600 text-xs">
-                          {avant?.numeroTitre || avant?.numeroLot
-                            ? `TF n° ${avant.numeroTitre || '—'} · Lot n° ${avant.numeroLot || '—'}`
+                          {avant?.numeroPropriete || avant?.numeroLot
+                            ? `Propriété n° ${avant.numeroPropriete || '—'} · Lot n° ${avant.numeroLot || '—'}`
                             : '—'}
                         </td>
                         <td className="px-4 py-3 text-gray-600 text-xs">
@@ -376,7 +376,7 @@ export default function DetailAvertissement() {
                                             {f.label}
                                           </p>
                                           <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">
-                                            {formatAuditValue(f.key, anciennes[f.key])}
+                                            {formatAuditValue(anciennes[f.key])}
                                           </p>
                                         </div>
                                       ))}
@@ -403,7 +403,7 @@ export default function DetailAvertissement() {
                                                 : 'text-gray-800'
                                             }`}
                                           >
-                                            {formatAuditValue(f.key, nouvelles[f.key])}
+                                            {formatAuditValue(nouvelles[f.key])}
                                           </p>
                                         </div>
                                       ))}

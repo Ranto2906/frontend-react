@@ -12,8 +12,8 @@ export interface NotificationOccupation {
   // Référentiels
   idParcelle?: string;
   numeroLot?: string;
-  idTitreFoncier?: string;
-  numeroTitre?: string;
+  idPropriete?: number;
+  numeroPropriete?: string;
   // Personnes associées
   personnes?: NotificationPersonne[];
 }
@@ -41,7 +41,7 @@ export interface NotificationOccupationRequest {
   actionsEntreprises?: string;
   statut: string;
   idParcelle: string;
-  idTitreFoncier: string;
+  idPropriete: number;
   personnes?: NotificationPersonneRequest[];
 }
 
@@ -58,8 +58,8 @@ export interface Avertissement {
   // Relations
   idParcelle?: string;
   numeroLot?: string;
-  idTitreFoncier?: string;
-  numeroTitre?: string;
+  idPropriete?: number;
+  numeroPropriete?: string;
   // Personne associée
   idPersonne?: number;
   nomPersonne?: string;
@@ -73,7 +73,7 @@ export interface SuiviNotification {
   actionsASuivre?: string;
   // Notification liée
   idNotification?: string;
-  numeroTitre?: string;
+  numeroPropriete?: string;
   numeroLot?: string;
   dateNotification?: string;
   statut?: string;
@@ -97,7 +97,7 @@ export interface AvertissementRequest {
   mission?: string;
   idPersonne: number;
   idParcelle: string;
-  idTitreFoncier: string;
+  idPropriete: number;
 }
 
 export interface TypePersonne {
@@ -167,11 +167,22 @@ export interface ImportExcelResult {
   avertissementsImportes: number;
   personnesCrees: number;
   personnesReutilisees: number;
-  titresFonciersCrees: number;
+  proprietesCrees: number;
   parcellesCrees: number;
   suivisCrees: number;
   photosImportees: number;
   lignesIgnorees: number;
+  erreurs: string[];
+}
+
+export interface ImportSituationDemandesResult {
+  feuillesTraitees: string[];
+  prixImportes: number;
+  dossiersImportes: number;
+  dossiersMisAJour: number;
+  parcellesLiees: number;
+  personnesReutilisees: number;
+  proprietesReutilisees: number;
   erreurs: string[];
 }
 

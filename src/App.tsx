@@ -5,17 +5,21 @@ import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/auth/Login';
 import Dashboard from './pages/dashboard/Dashboard';
 import Demandes from './pages/demandes/Demandes';
+import SuiviDossier from './pages/demandes/SuiviDossier';
+import DemandeForm from './pages/demandes/DemandeForm';
+import DetailDemande from './pages/demandes/DetailDemande';
+import GestionEtapes from './pages/demandes/GestionEtapes';
 import Patrimoine from './pages/patrimoine/Patrimoine';
 import SuiviTerrain from './pages/suivi/SuiviTerrain';
 import GestionVille from './pages/suivi/terrain/GestionVille';
 import GestionPropriete from './pages/suivi/terrain/GestionPropriete';
-import GestionTitreFoncier from './pages/suivi/terrain/GestionTitreFoncier';
 import GestionPrixM2 from './pages/suivi/terrain/GestionPrixM2';
 import DetailPrixM2 from './pages/suivi/terrain/DetailPrixM2';
 import GestionParcelle from './pages/suivi/terrain/GestionParcelle';
 import SuiviNotificationsHub from './pages/suivi-notifications/suivi/SuiviNotificationsHub';
 import GestionPersonne from './pages/suivi-notifications/personne/GestionPersonne';
 import DetailPersonne from './pages/suivi-notifications/personne/DetailPersonne';
+import CreatePersonne from './pages/suivi-notifications/personne/CreatePersonne';
 import NotificationOccupation from './pages/suivi-notifications/notification/NotificationOccupation';
 import NotificationOccupationForm from './pages/suivi-notifications/notification/NotificationOccupationForm';
 import DetailNotificationOccupation from './pages/suivi-notifications/notification/DetailNotificationOccupation';
@@ -27,6 +31,9 @@ import SuiviForm from './pages/suivi-notifications/suivi/SuiviForm';
 import DetailSuiviNotification from './pages/suivi-notifications/notification/DetailSuiviNotification';
 import Carte from './pages/carte/Carte';
 import Signalements from './pages/signalements/Signalements';
+import SignalementForm from './pages/signalements/SignalementForm';
+import DetailSignalement from './pages/signalements/DetailSignalement';
+import GestionMobile from './pages/gestion-mobile/GestionMobile';
 import Finances from './pages/finances/Finances';
 import Admin from './pages/admin/Admin';
 import Utilisateurs from './pages/utilisateurs/Utilisateurs';
@@ -53,10 +60,16 @@ export default function App() {
             }
           >
             <Route index element={<Dashboard />} />
-            <Route path="demandes" element={<Demandes />} />
+            <Route path="demandes" element={<SuiviDossier />} />
+            <Route path="demandes/liste" element={<Demandes />} />
+            <Route path="demandes/etapes" element={<GestionEtapes />} />
+            <Route path="demandes/nouveau" element={<DemandeForm />} />
+            <Route path="demandes/:id" element={<DetailDemande />} />
+            <Route path="demandes/:id/modifier" element={<DemandeForm />} />
             <Route path="patrimoine" element={<Patrimoine />} />
             <Route path="suivi-notifications" element={<SuiviNotificationsHub />} />
             <Route path="suivi-notifications/personnes" element={<GestionPersonne />} />
+            <Route path="suivi-notifications/personnes/nouvelle" element={<CreatePersonne />} />
             <Route path="suivi-notifications/personnes/:id" element={<DetailPersonne />} />
             <Route path="suivi-notifications/occupation" element={<NotificationOccupation />} />
             <Route path="suivi-notifications/occupation/nouvelle" element={<NotificationOccupationForm />} />
@@ -73,12 +86,15 @@ export default function App() {
             <Route path="suivi" element={<SuiviTerrain />} />
             <Route path="suivi/villes" element={<GestionVille />} />
             <Route path="suivi/proprietes" element={<GestionPropriete />} />
-            <Route path="suivi/titres-fonciers" element={<GestionTitreFoncier />} />
             <Route path="suivi/prix-m2" element={<GestionPrixM2 />} />
             <Route path="suivi/prix-m2/:id" element={<DetailPrixM2 />} />
             <Route path="suivi/parcelles" element={<GestionParcelle />} />
             <Route path="carte" element={<Carte />} />
+            <Route path="gestion-mobile" element={<GestionMobile />} />
             <Route path="signalements" element={<Signalements />} />
+            <Route path="signalements/nouveau" element={<SignalementForm />} />
+            <Route path="signalements/:id/modifier" element={<SignalementForm />} />
+            <Route path="signalements/:id" element={<DetailSignalement />} />
             <Route path="finances" element={<Finances />} />
             <Route path="utilisateurs" element={<Utilisateurs />} />
             <Route path="roles" element={<Roles />} />

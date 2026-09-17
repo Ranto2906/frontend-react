@@ -3,20 +3,63 @@ import { Link } from 'react-router-dom';
 import { importService } from '../../../services';
 import type { ImportExcelResult } from '../../../types';
 
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50 MB
+
+function validerFichier(file: File): string | null {
+  const ext = file.name.split('.').pop()?.toLowerCase();
+  if (ext !== 'xlsx' && ext !== 'xls') {
+    return 'Format non supporté. Utilisez un fichier .xlsx ou .xls.';
+  }
+  if (file.size > MAX_FILE_SIZE) {
+    return `Fichier trop volumineux (${(file.size / 1024 / 1024).toFixed(1)} MB). Maximum : 50 MB.`;
+  }
+  if (file.size === 0) {
+    return 'Le fichier est vide.';
+  }
+  return null;
+}
+
+function formatTaille(octets: number): string {
+  if (octets < 1024) return `${octets} o`;
+  if (octets < 1024 * 1024) return `${(octets / 1024).toFixed(1)} Ko`;
+  return `${(octets / (1024 * 1024)).toFixed(2)} Mo`;
+}
+
 export default function SuiviNotificationsHub() {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [importing, setImporting] = useState(false);
   const [resultat, setResultat] = useState<ImportExcelResult | null>(null);
   const [erreur, setErreur] = useState<string | null>(null);
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const [fichierSelectionne, setFichierSelectionne] = useState<File | null>(null);
+  const [uploadProgress, setUploadProgress] = useState<number | null>(null);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+
+    const errVal = validerFichier(file);
+    if (errVal) {
+      setErreur(errVal);
+      setFichierSelectionne(null);
+      return;
+    }
+
+    setFichierSelectionne(file);
+    setErreur(null);
+    setResultat(null);
+  };
+
+  const lancerImport = async () => {
+    if (!fichierSelectionne) return;
     setImporting(true);
     setErreur(null);
     setResultat(null);
+    setUploadProgress(null);
     try {
-      const res = await importService.importerExcel(file);
+      const res = await importService.importerExcel(fichierSelectionne, (p) => {
+        setUploadProgress(p);
+      });
       setResultat(res);
     } catch (err: unknown) {
       setErreur(
@@ -26,8 +69,16 @@ export default function SuiviNotificationsHub() {
       );
     } finally {
       setImporting(false);
+      setFichierSelectionne(null);
+      setUploadProgress(null);
       if (fileInputRef.current) fileInputRef.current.value = '';
     }
+  };
+
+  const annulerFichier = () => {
+    setFichierSelectionne(null);
+    setErreur(null);
+    if (fileInputRef.current) fileInputRef.current.value = '';
   };
 
   const totalErreurs = resultat?.erreurs.length ?? 0;
@@ -65,10 +116,56 @@ export default function SuiviNotificationsHub() {
         </div>
       </div>
 
-      {/* Résultat de l'import */}
+      {/* Preview du fichier sélectionné */}
+      {fichierSelectionne && !importing && !resultat && (
+        <div className="mb-6 bg-gray-50 border border-gray-200 rounded-lg p-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <span className="text-2xl">📄</span>
+              <div>
+                <p className="font-medium text-gray-800">{fichierSelectionne.name}</p>
+                <p className="text-xs text-gray-500">
+                  {fichierSelectionne.name.split('.').pop()?.toUpperCase()} — {formatTaille(fichierSelectionne.size)}
+                </p>
+              </div>
+            </div>
+            <div className="flex gap-2">
+              <button
+                onClick={annulerFichier}
+                className="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800 border border-gray-300 rounded-lg transition-colors"
+              >
+                Annuler
+              </button>
+              <button
+                onClick={lancerImport}
+                className="px-4 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-sm rounded-lg font-medium transition-colors"
+              >
+                🚀 Lancer l'import
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Barre de progression */}
       {importing && (
-        <div className="mb-6 bg-blue-50 border border-blue-200 text-blue-700 rounded-lg px-4 py-3 text-sm">
-          ⏳ Import du fichier en cours… veuillez patienter.
+        <div className="mb-6 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3 text-sm">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-blue-700">
+              {uploadProgress !== null && uploadProgress < 100
+                ? `📤 Upload en cours... ${uploadProgress}%`
+                : '⏳ Traitement du fichier en cours…'}
+            </span>
+            {uploadProgress !== null && (
+              <span className="text-blue-500 text-xs font-medium">{uploadProgress}%</span>
+            )}
+          </div>
+          <div className="w-full bg-blue-200 rounded-full h-2">
+            <div
+              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+              style={{ width: `${uploadProgress ?? 0}%` }}
+            />
+          </div>
         </div>
       )}
 
@@ -86,7 +183,7 @@ export default function SuiviNotificationsHub() {
               <span className="text-xs font-medium text-red-600">{totalErreurs} ligne(s) en erreur</span>
             )}
           </div>
-          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3 text-sm">
+          <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 text-sm">
             <div className="bg-gray-50 rounded-lg p-3">
               <div className="text-2xl font-bold text-gray-800">{resultat.notificationsImportees}</div>
               <div className="text-xs text-gray-500">Notifications importées</div>
@@ -107,6 +204,14 @@ export default function SuiviNotificationsHub() {
               <div className="text-2xl font-bold text-gray-800">{resultat.suivisCrees}</div>
               <div className="text-xs text-gray-500">Suivis créés</div>
             </div>
+            <div className="bg-gray-50 rounded-lg p-3">
+              <div className="text-2xl font-bold text-gray-800">{resultat.proprietesCrees}</div>
+              <div className="text-xs text-gray-500">Propriétés créées</div>
+            </div>
+            <div className="bg-gray-50 rounded-lg p-3">
+              <div className="text-2xl font-bold text-gray-800">{resultat.parcellesCrees}</div>
+              <div className="text-xs text-gray-500">Parcelles créées</div>
+            </div>
             <div
               className={`rounded-lg p-3 ${
                 (resultat.lignesIgnorees ?? 0) > 0 ? 'bg-amber-50 border border-amber-200' : 'bg-gray-50'
@@ -118,7 +223,7 @@ export default function SuiviNotificationsHub() {
           </div>
           {(resultat.lignesIgnorees ?? 0) > 0 && (
             <p className="mt-3 text-xs text-gray-500">
-              ℹ️ L'import est idempotent : les lignes déjà présentes (même titre foncier,
+              ℹ️ L'import est idempotent : les lignes déjà présentes (même propriété,
               parcelle, date et personne) ne sont pas dupliquées. Les photos manquantes sont
               ajoutées à la fiche existante.
             </p>

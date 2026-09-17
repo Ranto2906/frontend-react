@@ -158,7 +158,7 @@ export default function GestionPersonne() {
           </p>
         </div>
         <button
-          onClick={() => setModal({ type: 'create' })}
+          onClick={() => navigate('/suivi-notifications/personnes/nouvelle')}
           className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm flex items-center gap-2 transition-colors"
         >
           <span>➕</span> Nouvelle personne

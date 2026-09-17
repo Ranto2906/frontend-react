@@ -12,7 +12,7 @@ const STATUT_COLORS: Record<string, string> = {
 // Champs affichés dans l'historique (ordre + libellés français)
 const FIELDS: { key: string; label: string }[] = [
   { key: 'statut', label: 'Statut notification' },
-  { key: 'numeroTitre', label: 'N° titre foncier' },
+  { key: 'numeroPropriete', label: 'N° propriété' },
   { key: 'numeroLot', label: 'N° lot' },
   { key: 'dateNotification', label: 'Date notification' },
   { key: 'ordre', label: 'N° du suivi' },
@@ -21,7 +21,7 @@ const FIELDS: { key: string; label: string }[] = [
   { key: 'actionsASuivre', label: 'Actions à suivre' },
 ];
 
-function formatAuditValue(key: string, val: unknown): string {
+function formatAuditValue(val: unknown): string {
   if (val === null || val === undefined || val === '') return '—';
   if (typeof val === 'string') {
     if (/^\d{4}-\d{2}-\d{2}$/.test(val)) {
@@ -159,7 +159,7 @@ export default function DetailSuiviNotification() {
         <h1 className="text-2xl font-bold text-gray-800">
           📋 Suivi n° {suivi.ordre ?? '—'}{' '}
           <span className="text-gray-400 font-normal text-lg">
-            — TF n° {suivi.numeroTitre || '—'} · Lot n° {suivi.numeroLot || '—'}
+            — Propriété n° {suivi.numeroPropriete || '—'} · Lot n° {suivi.numeroLot || '—'}
           </span>
         </h1>
         <div className="flex items-center gap-2">
@@ -205,7 +205,7 @@ export default function DetailSuiviNotification() {
                   to={`/suivi-notifications/occupation/${suivi.idNotification}`}
                   className="text-sm font-medium text-gray-800 hover:text-blue-600 hover:underline"
                 >
-                  TF n° {suivi.numeroTitre || '—'} · Lot n° {suivi.numeroLot || '—'}
+                  Propriété n° {suivi.numeroPropriete || '—'} · Lot n° {suivi.numeroLot || '—'}
                 </Link>
               ) : (
                 <p className="text-sm text-gray-800">—</p>
@@ -361,7 +361,7 @@ export default function DetailSuiviNotification() {
                                             {f.label}
                                           </p>
                                           <p className="text-sm text-gray-800 whitespace-pre-wrap break-words">
-                                            {formatAuditValue(f.key, anciennes[f.key])}
+                                            {formatAuditValue(anciennes[f.key])}
                                           </p>
                                         </div>
                                       ))}
@@ -388,7 +388,7 @@ export default function DetailSuiviNotification() {
                                                 : 'text-gray-800'
                                             }`}
                                           >
-                                            {formatAuditValue(f.key, nouvelles[f.key])}
+                                            {formatAuditValue(nouvelles[f.key])}
                                           </p>
                                         </div>
                                       ))}

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { parcelleService, titreFoncierService } from '../../../services';
-import type { Parcelle, TitreFoncier, PageResponse } from '../../../types';
+import { parcelleService, proprieteService } from '../../../services';
+import type { Parcelle, Propriete, PageResponse } from '../../../types';
 
 type Modal =
   | { type: 'create' }
@@ -11,7 +11,7 @@ type Modal =
 
 export default function GestionParcelle() {
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
-  const [titres, setTitres] = useState<TitreFoncier[]>([]);
+  const [proprietes, setProprietes] = useState<Propriete[]>([]);
   const [page, setPage] = useState<PageResponse<Parcelle> | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -26,13 +26,13 @@ export default function GestionParcelle() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [data, titresData] = await Promise.all([
+      const [data, proprietesData] = await Promise.all([
         parcelleService.lister(currentPage, 15),
-        titreFoncierService.lister(0, 200),
+        proprieteService.lister(0, 200),
       ]);
       setPage(data);
       setParcelles(data.content);
-      setTitres(titresData.content);
+      setProprietes(proprietesData.content);
     } catch {
       showToast('Erreur lors du chargement', false);
     } finally {
@@ -42,7 +42,7 @@ export default function GestionParcelle() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
-  const handleCreate = async (data: { numeroLot?: string; superficieM2?: number; observation?: string; idTitreFoncier: string }) => {
+  const handleCreate = async (data: { numeroLot?: string; superficieM2?: number; observation?: string; idPropriete: number }) => {
     try {
       await parcelleService.creer(data);
       showToast('Parcelle créée avec succès');
@@ -53,7 +53,7 @@ export default function GestionParcelle() {
     }
   };
 
-  const handleUpdate = async (id: string, data: { numeroLot?: string; superficieM2?: number; observation?: string; idTitreFoncier: string }) => {
+  const handleUpdate = async (id: string, data: { numeroLot?: string; superficieM2?: number; observation?: string; idPropriete: number }) => {
     try {
       await parcelleService.modifier(id, data);
       showToast('Parcelle mise à jour');
@@ -75,7 +75,7 @@ export default function GestionParcelle() {
     }
   };
 
-  const getTitreNumero = (idTitre: string) => titres.find((t) => t.idTitreFoncier === idTitre)?.numero || '—';
+  const getProprieteNumero = (idPropriete: number) => proprietes.find((p) => p.idPropriete === idPropriete)?.numero || '—';
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
@@ -112,7 +112,7 @@ export default function GestionParcelle() {
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Numéro Lot</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">Superficie (m²)</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Observation</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Titre Foncier</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Propriété</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
               </tr>
             </thead>
@@ -128,7 +128,7 @@ export default function GestionParcelle() {
                   </td>
                   <td className="px-4 py-3 text-gray-800 font-semibold text-right">{p.superficieM2 ? p.superficieM2.toLocaleString('fr-FR') : '—'}</td>
                   <td className="px-4 py-3 text-gray-600 text-xs max-w-[200px] truncate">{p.observation || '—'}</td>
-                  <td className="px-4 py-3 text-gray-600">{p.numeroTitre || getTitreNumero(p.idTitreFoncier)}</td>
+                  <td className="px-4 py-3 text-gray-600">{p.numeroPropriete || getProprieteNumero(p.idPropriete)}</td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
                       <button onClick={() => setModal({ type: 'edit', parcelle: p })} title="Modifier" className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600 transition-colors">✏️</button>
@@ -152,15 +152,15 @@ export default function GestionParcelle() {
         )}
       </div>
 
-      {modal?.type === 'create' && <CreateParcelleModal titres={titres} onSave={handleCreate} onClose={() => setModal(null)} />}
-      {modal?.type === 'edit' && <EditParcelleModal parcelle={modal.parcelle} titres={titres} onSave={handleUpdate} onClose={() => setModal(null)} />}
+      {modal?.type === 'create' && <CreateParcelleModal proprietes={proprietes} onSave={handleCreate} onClose={() => setModal(null)} />}
+      {modal?.type === 'edit' && <EditParcelleModal parcelle={modal.parcelle} proprietes={proprietes} onSave={handleUpdate} onClose={() => setModal(null)} />}
       {modal?.type === 'delete' && <DeleteParcelleModal parcelle={modal.parcelle} onConfirm={handleDelete} onClose={() => setModal(null)} />}
     </div>
   );
 }
 
-function CreateParcelleModal({ titres, onSave, onClose }: { titres: TitreFoncier[]; onSave: (data: { numeroLot?: string; superficieM2?: number; observation?: string; idTitreFoncier: string }) => Promise<void>; onClose: () => void }) {
-  const [form, setForm] = useState({ numeroLot: '', superficieM2: '', observation: '', idTitreFoncier: '' });
+function CreateParcelleModal({ proprietes, onSave, onClose }: { proprietes: Propriete[]; onSave: (data: { numeroLot?: string; superficieM2?: number; observation?: string; idPropriete: number }) => Promise<void>; onClose: () => void }) {
+  const [form, setForm] = useState({ numeroLot: '', superficieM2: '', observation: '', idPropriete: 0 });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -169,14 +169,14 @@ function CreateParcelleModal({ titres, onSave, onClose }: { titres: TitreFoncier
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!form.idTitreFoncier) return setError('Le titre foncier est requis');
+    if (!form.idPropriete) return setError('La propriété est requise');
     setSaving(true);
     try {
       await onSave({
         numeroLot: form.numeroLot || undefined,
         superficieM2: form.superficieM2 ? Number(form.superficieM2) : undefined,
         observation: form.observation || undefined,
-        idTitreFoncier: form.idTitreFoncier,
+        idPropriete: form.idPropriete,
       });
     } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Erreur'); setSaving(false); }
   };
@@ -191,10 +191,10 @@ function CreateParcelleModal({ titres, onSave, onClose }: { titres: TitreFoncier
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Superficie (m²)</label><input type="number" step="0.01" value={form.superficieM2} onChange={(e) => set('superficieM2', e.target.value)} placeholder="ex: 500" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" /></div>
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Observation</label><input type="text" value={form.observation} onChange={(e) => set('observation', e.target.value)} placeholder="ex: Parcelle coin nord" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" /></div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Titre foncier *</label>
-            <select value={form.idTitreFoncier} onChange={(e) => set('idTitreFoncier', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Propriété *</label>
+            <select value={form.idPropriete || ''} onChange={(e) => setForm((f) => ({ ...f, idPropriete: Number(e.target.value) }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
               <option value="">— Sélectionner —</option>
-              {titres.map((t) => <option key={t.idTitreFoncier} value={t.idTitreFoncier}>{t.numero}{t.nomPropriete ? ` (${t.nomPropriete})` : ''}</option>)}
+              {proprietes.map((p) => <option key={p.idPropriete} value={p.idPropriete}>{p.nom}{p.numero ? ` (${p.numero})` : ''}</option>)}
             </select>
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
@@ -207,8 +207,8 @@ function CreateParcelleModal({ titres, onSave, onClose }: { titres: TitreFoncier
   );
 }
 
-function EditParcelleModal({ parcelle, titres, onSave, onClose }: { parcelle: Parcelle; titres: TitreFoncier[]; onSave: (id: string, data: { numeroLot?: string; superficieM2?: number; observation?: string; idTitreFoncier: string }) => Promise<void>; onClose: () => void }) {
-  const [form, setForm] = useState({ numeroLot: parcelle.numeroLot || '', superficieM2: parcelle.superficieM2?.toString() || '', observation: parcelle.observation || '', idTitreFoncier: parcelle.idTitreFoncier });
+function EditParcelleModal({ parcelle, proprietes, onSave, onClose }: { parcelle: Parcelle; proprietes: Propriete[]; onSave: (id: string, data: { numeroLot?: string; superficieM2?: number; observation?: string; idPropriete: number }) => Promise<void>; onClose: () => void }) {
+  const [form, setForm] = useState({ numeroLot: parcelle.numeroLot || '', superficieM2: parcelle.superficieM2?.toString() || '', observation: parcelle.observation || '', idPropriete: parcelle.idPropriete });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -217,14 +217,14 @@ function EditParcelleModal({ parcelle, titres, onSave, onClose }: { parcelle: Pa
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setError('');
-    if (!form.idTitreFoncier) return setError('Le titre foncier est requis');
+    if (!form.idPropriete) return setError('La propriété est requise');
     setSaving(true);
     try {
       await onSave(parcelle.idParcelle, {
         numeroLot: form.numeroLot || undefined,
         superficieM2: form.superficieM2 ? Number(form.superficieM2) : undefined,
         observation: form.observation || undefined,
-        idTitreFoncier: form.idTitreFoncier,
+        idPropriete: form.idPropriete,
       });
     } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Erreur'); setSaving(false); }
   };
@@ -239,10 +239,10 @@ function EditParcelleModal({ parcelle, titres, onSave, onClose }: { parcelle: Pa
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Superficie (m²)</label><input type="number" step="0.01" value={form.superficieM2} onChange={(e) => set('superficieM2', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" /></div>
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Observation</label><input type="text" value={form.observation} onChange={(e) => set('observation', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" /></div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Titre foncier *</label>
-            <select value={form.idTitreFoncier} onChange={(e) => set('idTitreFoncier', e.target.value)} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Propriété *</label>
+            <select value={form.idPropriete || ''} onChange={(e) => setForm((f) => ({ ...f, idPropriete: Number(e.target.value) }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
               <option value="">— Sélectionner —</option>
-              {titres.map((t) => <option key={t.idTitreFoncier} value={t.idTitreFoncier}>{t.numero}{t.nomPropriete ? ` (${t.nomPropriete})` : ''}</option>)}
+              {proprietes.map((p) => <option key={p.idPropriete} value={p.idPropriete}>{p.nom}{p.numero ? ` (${p.numero})` : ''}</option>)}
             </select>
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">

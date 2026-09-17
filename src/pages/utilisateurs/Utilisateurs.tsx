@@ -326,7 +326,6 @@ export default function Utilisateurs() {
       {modal?.type === 'edit' && (
         <EditUserModal
           user={modal.user}
-          allRoles={allRoles}
           onSave={handleSaveUser}
           onClose={() => setModal(null)}
         />
@@ -502,12 +501,10 @@ function CreateUserModal({
 // ══════════════════════════════════════════════════════════════
 function EditUserModal({
   user,
-  allRoles,
   onSave,
   onClose,
 }: {
   user: UtilisateurDTO;
-  allRoles: RoleDTO[];
   onSave: (data: { id: number; data: UpdateUtilisateurRequest }) => Promise<void>;
   onClose: () => void;
 }) {
