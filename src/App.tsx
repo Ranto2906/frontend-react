@@ -9,10 +9,13 @@ import SuiviDossier from './pages/demandes/SuiviDossier';
 import DemandeForm from './pages/demandes/DemandeForm';
 import DetailDemande from './pages/demandes/DetailDemande';
 import GestionEtapes from './pages/demandes/GestionEtapes';
+import GestionTypesDossier from './pages/demandes/GestionTypesDossier';
 import Patrimoine from './pages/patrimoine/Patrimoine';
 import SuiviTerrain from './pages/suivi/SuiviTerrain';
 import GestionVille from './pages/suivi/terrain/GestionVille';
+import GestionLieu from './pages/suivi/terrain/GestionLieu';
 import GestionPropriete from './pages/suivi/terrain/GestionPropriete';
+import DetailPropriete from './pages/suivi/terrain/DetailPropriete';
 import GestionPrixM2 from './pages/suivi/terrain/GestionPrixM2';
 import DetailPrixM2 from './pages/suivi/terrain/DetailPrixM2';
 import GestionParcelle from './pages/suivi/terrain/GestionParcelle';
@@ -63,6 +66,7 @@ export default function App() {
             <Route path="demandes" element={<SuiviDossier />} />
             <Route path="demandes/liste" element={<Demandes />} />
             <Route path="demandes/etapes" element={<GestionEtapes />} />
+            <Route path="demandes/types-dossier" element={<GestionTypesDossier />} />
             <Route path="demandes/nouveau" element={<DemandeForm />} />
             <Route path="demandes/:id" element={<DetailDemande />} />
             <Route path="demandes/:id/modifier" element={<DemandeForm />} />
@@ -85,7 +89,9 @@ export default function App() {
             <Route path="suivi-notifications/suivi/:id" element={<DetailSuiviNotification />} />
             <Route path="suivi" element={<SuiviTerrain />} />
             <Route path="suivi/villes" element={<GestionVille />} />
+            <Route path="suivi/lieux" element={<GestionLieu />} />
             <Route path="suivi/proprietes" element={<GestionPropriete />} />
+            <Route path="suivi/proprietes/:id" element={<DetailPropriete />} />
             <Route path="suivi/prix-m2" element={<GestionPrixM2 />} />
             <Route path="suivi/prix-m2/:id" element={<DetailPrixM2 />} />
             <Route path="suivi/parcelles" element={<GestionParcelle />} />

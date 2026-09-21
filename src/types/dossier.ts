@@ -108,6 +108,7 @@ export interface DemandeDossier {
   transmission?: string | null;
   resultatEtude?: string | null;
   observation?: string | null;
+  lieu?: string | null;
   dateCreation?: string;
   dateModification?: string;
   dateValidation?: string | null;
@@ -118,6 +119,11 @@ export interface DemandeDossier {
   libelleStatut?: string | null;
   couleurStatutHex?: string | null;
   statutFinal?: boolean | null;
+  // Type de dossier + dossier fournie
+  idTypeDossier?: number | null;
+  libelleTypeDossier?: string | null;
+  idDossierFournie?: number | null;
+  libelleDossierFournie?: string | null;
   // Ville
   idVille: number;
   nomVille?: string;
@@ -149,6 +155,8 @@ export interface ParcelleDemandee {
   idPropriete?: number;
   nomPropriete?: string | null;
   numeroPropriete?: string | null;
+  libelleLieu?: string | null;
+  nomLieu?: string | null;
   idParcelle?: string | null;
   numeroLot?: string | null;
   superficieM2?: number | null;
@@ -187,9 +195,13 @@ export interface DemandeDossierRequest {
   transmission?: string;
   resultatEtude?: string;
   observation?: string;
+  lieu?: string;
   dateValidation?: string;
   montantTotal?: number;
   idStatutDossier?: number;
+  idTypeDossier?: number;
+  /** Texte libre : le backend crée ou réutilise la pièce « dossier_fournie » correspondante. */
+  dossierFournieLibelle?: string;
   idVille: number;
   demandeurs?: DemandeDossierDemandeurRequest[];
   parcelles?: ParcelleDemandeeRequest[];

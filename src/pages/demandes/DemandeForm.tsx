@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { dossierService, villeService, personService, documentDemandeurService } from '../../services';
+import { dossierService, villeService, lieuService, personService, documentDemandeurService, typeDossierService } from '../../services';
 import DocumentsDemandeur from './DocumentsDemandeur';
 import PersonneDocumentsPicker, { type DocumentEnAttente } from '../../components/PersonneDocumentsPicker';
 import type {
@@ -13,6 +13,8 @@ import type {
   ParcelleDemandeeRequest,
   DocumentDemandeur,
   TypePersonne,
+  TypeDossier,
+  Lieu,
 } from '../../types';
 
 // ════════════════════════════════════════════════════════════
@@ -53,9 +55,15 @@ export default function DemandeForm() {
   const [transmission, setTransmission] = useState('');
   const [resultatEtude, setResultatEtude] = useState('');
   const [observation, setObservation] = useState('');
+  const [lieu, setLieu] = useState('');
   const [idStatutDossier, setIdStatutDossier] = useState('');
   const [idVille, setIdVille] = useState('');
   const [montantTtc, setMontantTtc] = useState('');
+
+  // ── Type de dossier + dossier fournie (texte libre) ──
+  const [typesDossier, setTypesDossier] = useState<TypeDossier[]>([]);
+  const [idTypeDossier, setIdTypeDossier] = useState('');
+  const [dossierFournieTexte, setDossierFournieTexte] = useState('');
 
   // ── Demandeurs ──
   const [lignes, setLignes] = useState<LigneDemandeur[]>([
@@ -66,14 +74,25 @@ export default function DemandeForm() {
   const [parcelleLignes, setParcelleLignes] = useState<LigneParcelle[]>([
     { cle: 0, superficieM2: '', observation: '' },
   ]);
-  const [modeDemandeur, setModeDemandeur] = useState<'nouveau' | 'existant'>('nouveau');
+  const [modeDemandeur, setModeDemandeur] = useState<'nouveau' | 'existant'>(edition ? 'existant' : 'nouveau');
   const [recherche, setRecherche] = useState('');
+  const [rechercheEnCours, setRechercheEnCours] = useState(false);
+  const [erreurRecherche, setErreurRecherche] = useState('');
   const [resultats, setResultats] = useState<Array<{
     idPersonne: number;
     nom: string;
     contact?: string | null;
     idTypePersonne?: number;
   }>>([]);
+
+  // ── Lieu : sélection d'un lieu existant ou création inline ──
+  const [modeLieu, setModeLieu] = useState<'nouveau' | 'existant'>(edition ? 'existant' : 'nouveau');
+  const [lieux, setLieux] = useState<Lieu[]>([]);
+  const [rechercheLieu, setRechercheLieu] = useState('');
+  const [resultatsLieux, setResultatsLieux] = useState<Lieu[]>([]);
+  const [nomNouveauLieu, setNomNouveauLieu] = useState('');
+  const [creationLieuEnCours, setCreationLieuEnCours] = useState(false);
+  const [erreurLieu, setErreurLieu] = useState('');
 
   // ── Référentiels / état ──
   const [villes, setVilles] = useState<Ville[]>([]);
@@ -90,6 +109,33 @@ export default function DemandeForm() {
   const [chargement, setChargement] = useState(edition);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
+  const rechercherPersonnes = async () => {
+    const nom = recherche.trim();
+    if (nom.length < 2) {
+      setResultats([]);
+      setErreurRecherche('Saisissez au moins 2 caractères.');
+      return;
+    }
+    setRechercheEnCours(true);
+    setErreurRecherche('');
+    try {
+      const response = await personService.rechercherParNom(nom);
+      const personnes = Array.isArray(response) ? response : response.content;
+      setResultats(personnes.map((p) => ({
+        idPersonne: p.idPersonne,
+        nom: p.nom,
+        contact: p.contact,
+        idTypePersonne: p.idTypePersonne,
+      })));
+      if (personnes.length === 0) setErreurRecherche('Aucune personne trouvée.');
+    } catch {
+      setResultats([]);
+      setErreurRecherche('La recherche est indisponible.');
+    } finally {
+      setRechercheEnCours(false);
+    }
+  };
+
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 3000);
@@ -99,14 +145,18 @@ export default function DemandeForm() {
   useEffect(() => {
     (async () => {
       try {
-        const [v, s, t] = await Promise.all([
+        const [v, l, s, t, td] = await Promise.all([
           villeService.listerToutes(),
+          lieuService.lister(),
           dossierService.listerStatuts(),
           personService.listerTypes(),
+          typeDossierService.lister(),
         ]);
         setVilles(v);
+        setLieux(l);
         setStatuts(s);
         setTypesPersonne(t);
+        setTypesDossier(td);
       } catch { /* référentiels indisponibles */ }
     })();
   }, []);
@@ -122,8 +172,13 @@ export default function DemandeForm() {
         setTransmission(d.transmission ?? '');
         setResultatEtude(d.resultatEtude ?? '');
         setObservation(d.observation ?? '');
+        setLieu(d.lieu ?? '');
+        setRechercheLieu(d.lieu ?? '');
         setIdStatutDossier(d.idStatutDossier != null ? String(d.idStatutDossier) : '');
+        setIdTypeDossier(d.idTypeDossier != null ? String(d.idTypeDossier) : '');
+        setDossierFournieTexte(d.libelleDossierFournie ?? '');
         setIdVille(String(d.idVille));
+        setModeLieu('existant');
         setParcelleLignes(
           (d.parcelles ?? []).length > 0
             ? (d.parcelles ?? []).map((p, i) => ({
@@ -166,6 +221,52 @@ export default function DemandeForm() {
       }
     })();
   }, [id]);
+
+  useEffect(() => {
+    const recherche = rechercheLieu.trim().toLowerCase();
+    setResultatsLieux(
+      recherche.length < 2
+        ? []
+        : lieux.filter((l) =>
+            l.libelle.toLowerCase().includes(recherche) ||
+            (l.nomVille ?? '').toLowerCase().includes(recherche),
+          ),
+    );
+  }, [rechercheLieu, lieux]);
+
+  const selectionnerLieu = (selection: Lieu) => {
+    setLieu(selection.libelle);
+    setIdVille(String(selection.idVille));
+    setRechercheLieu(selection.libelle);
+    setResultatsLieux([]);
+    setErreurLieu('');
+    setParcelleLignes((l) => l.map((li) => ({ ...li, idPropriete: undefined, idParcelle: undefined })));
+  };
+
+  const creerEtSelectionnerLieu = async () => {
+    const libelle = nomNouveauLieu.trim();
+    if (!libelle) {
+      setErreurLieu('Le nom du lieu est obligatoire.');
+      return;
+    }
+    if (!idVille) {
+      setErreurLieu('La ville du lieu est obligatoire.');
+      return;
+    }
+    setCreationLieuEnCours(true);
+    setErreurLieu('');
+    try {
+      const nouveauLieu = await lieuService.creer({ libelle, idVille: Number(idVille) });
+      setLieux((precedents) => [...precedents, nouveauLieu]);
+      selectionnerLieu(nouveauLieu);
+      setNomNouveauLieu('');
+      setModeLieu('existant');
+    } catch (err: unknown) {
+      setErreurLieu(err instanceof Error ? err.message : 'Impossible de créer le lieu.');
+    } finally {
+      setCreationLieuEnCours(false);
+    }
+  };
 
   // Prix au m² de la ville sélectionnée (calcul auto HT/TTC)
   useEffect(() => {
@@ -243,17 +344,7 @@ export default function DemandeForm() {
       setResultats([]);
       return;
     }
-    const t = setTimeout(async () => {
-      try {
-        const r = await personService.rechercherParNom(recherche.trim());
-        setResultats(r as unknown as Array<{
-          idPersonne: number;
-          nom: string;
-          contact?: string | null;
-          idTypePersonne?: number;
-        }>);
-      } catch { setResultats([]); }
-    }, 300);
+    const t = setTimeout(() => { rechercherPersonnes(); }, 300);
     return () => clearTimeout(t);
   }, [recherche, modeDemandeur]);
 
@@ -289,9 +380,9 @@ export default function DemandeForm() {
   };
 
   const peutSoumettre = useMemo(
-    () => numeroDossier.trim() && idVille
+    () => numeroDossier.trim() && idVille && lieu.trim()
       && lignes.some((li) => li.idPersonne || li.nom.trim()),
-    [numeroDossier, idVille, lignes],
+    [numeroDossier, idVille, lieu, lignes],
   );
 
   const soumettre = async (e: React.FormEvent) => {
@@ -327,8 +418,11 @@ export default function DemandeForm() {
       transmission: transmission.trim() || undefined,
       resultatEtude: resultatEtude.trim() || undefined,
       observation: observation.trim() || undefined,
+      lieu: lieu.trim() || undefined,
       montantTotal: montantTtc ? Number(montantTtc) : undefined,
       idStatutDossier: idStatutDossier ? Number(idStatutDossier) : undefined,
+      idTypeDossier: idTypeDossier ? Number(idTypeDossier) : undefined,
+      dossierFournieLibelle: dossierFournieTexte.trim() || undefined,
       idVille: Number(idVille),
       demandeurs,
       parcelles,
@@ -422,26 +516,6 @@ export default function DemandeForm() {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-600 mb-1">
-                Ville <span className="text-red-500">*</span>
-              </label>
-              <select
-                required
-                value={idVille}
-                onChange={(e) => {
-                  setIdVille(e.target.value);
-                  // La ville change : les propriétés sélectionnées ne sont plus valides
-                  setParcelleLignes((l) => l.map((li) => ({ ...li, idPropriete: undefined, idParcelle: undefined })));
-                }}
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              >
-                <option value="">— Choisir —</option>
-                {villes.map((v) => (
-                  <option key={v.idVille} value={v.idVille}>{v.nomVille}</option>
-                ))}
-              </select>
-            </div>
-            <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Date de la demande</label>
               <input
                 type="date"
@@ -462,6 +536,29 @@ export default function DemandeForm() {
                   <option key={s.idStatutDossier} value={s.idStatutDossier}>{s.libelle}</option>
                 ))}
               </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Type de dossier</label>
+              <select
+                value={idTypeDossier}
+                onChange={(e) => setIdTypeDossier(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              >
+                <option value="">— Aucun —</option>
+                {typesDossier.map((t) => (
+                  <option key={t.idTypeDossier} value={t.idTypeDossier}>{t.libelle}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-600 mb-1">Dossier fournie</label>
+              <input
+                type="text"
+                value={dossierFournieTexte}
+                onChange={(e) => setDossierFournieTexte(e.target.value)}
+                placeholder="Saisir le dossier fourni…"
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              />
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Montant total TTC</label>
@@ -503,6 +600,91 @@ export default function DemandeForm() {
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
               />
             </div>
+          </div>
+
+          <div className="mt-5 pt-5 border-t border-gray-100">
+            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+              <div>
+                <label className="block text-sm font-medium text-gray-600">Lieu <span className="text-red-500">*</span></label>
+                <p className="text-xs text-gray-400 mt-1">Sélectionnez un lieu existant ou créez-le s’il n’est pas encore enregistré.</p>
+              </div>
+              <div className="flex rounded-lg border border-gray-300 overflow-hidden text-xs">
+                <button
+                  type="button"
+                  onClick={() => setModeLieu('existant')}
+                  className={`px-3 py-1.5 font-medium transition-colors ${modeLieu === 'existant' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                >
+                  Lieu existant
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setModeLieu('nouveau')}
+                  className={`px-3 py-1.5 font-medium transition-colors ${modeLieu === 'nouveau' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                >
+                  Nouveau lieu
+                </button>
+              </div>
+            </div>
+
+            {modeLieu === 'existant' ? (
+              <div className="relative">
+                <input
+                  type="text"
+                  value={rechercheLieu}
+                  onChange={(e) => setRechercheLieu(e.target.value)}
+                  placeholder="Rechercher un lieu par nom ou par ville (2 caractères min.)"
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+                {resultatsLieux.length > 0 && (
+                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                    {resultatsLieux.map((l) => (
+                      <button
+                        key={l.idLieu}
+                        type="button"
+                        onClick={() => selectionnerLieu(l)}
+                        className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm border-b border-gray-100 last:border-0"
+                      >
+                        <span className="font-medium text-gray-800">{l.libelle}</span>
+                        <span className="block text-xs text-gray-500">{l.nomVille || `Ville #${l.idVille}`}</span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+                {lieu && (
+                  <p className="mt-2 text-xs text-green-700">✓ Lieu sélectionné : <strong>{lieu}</strong></p>
+                )}
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <input
+                  type="text"
+                  value={nomNouveauLieu}
+                  onChange={(e) => setNomNouveauLieu(e.target.value)}
+                  placeholder="Nom du nouveau lieu *"
+                  className="md:col-span-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+                <select
+                  value={idVille}
+                  onChange={(e) => {
+                    setIdVille(e.target.value);
+                    setParcelleLignes((l) => l.map((li) => ({ ...li, idPropriete: undefined, idParcelle: undefined })));
+                  }}
+                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                >
+                  <option value="">— Ville du lieu —</option>
+                  {villes.map((v) => <option key={v.idVille} value={v.idVille}>{v.nomVille}</option>)}
+                </select>
+                <button
+                  type="button"
+                  onClick={creerEtSelectionnerLieu}
+                  disabled={creationLieuEnCours || !nomNouveauLieu.trim() || !idVille}
+                  className="md:col-span-3 justify-self-start px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                  {creationLieuEnCours ? 'Création...' : '📍 Créer et sélectionner le lieu'}
+                </button>
+              </div>
+            )}
+            {erreurLieu && <p className="mt-2 text-xs text-red-600">{erreurLieu}</p>}
           </div>
         </div>
 
@@ -676,13 +858,29 @@ export default function DemandeForm() {
           {/* Recherche personne existante */}
           {modeDemandeur === 'existant' && (
             <div className="mb-4 relative">
-              <input
-                type="text"
-                value={recherche}
-                onChange={(e) => setRecherche(e.target.value)}
-                placeholder="🔍 Rechercher une personne par nom (2 caractères min.)"
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-              />
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={recherche}
+                  onChange={(e) => setRecherche(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      rechercherPersonnes();
+                    }
+                  }}
+                  placeholder="Rechercher une personne par nom (2 caractères min.)"
+                  className="flex-1 px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                />
+                <button
+                  type="button"
+                  onClick={rechercherPersonnes}
+                  disabled={recherche.trim().length < 2 || rechercheEnCours}
+                  className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg text-sm font-medium transition-colors"
+                >
+                  {rechercheEnCours ? 'Recherche...' : '🔍 Rechercher'}
+                </button>
+              </div>
               {resultats.length > 0 && (
                 <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
                   {resultats.map((p) => (
@@ -720,6 +918,9 @@ export default function DemandeForm() {
               <p className="text-xs text-gray-400 mt-1">
                 La personne sélectionnée est ajoutée à la liste des demandeurs ci-dessous.
               </p>
+              {erreurRecherche && (
+                <p className="text-xs text-amber-600 mt-1">{erreurRecherche}</p>
+              )}
             </div>
           )}
 

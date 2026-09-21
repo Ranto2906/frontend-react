@@ -15,6 +15,15 @@ export interface PrixM2 {
   nomVille?: string;
 }
 
+export interface Lieu {
+  idLieu: number;
+  libelle: string;
+  idVille: number;
+  nomVille?: string;
+  createdAt?: string;
+  updatedAt?: string;
+}
+
 export interface Propriete {
   idPropriete: number;
   nom: string;
@@ -22,6 +31,8 @@ export interface Propriete {
   zone?: string;
   localisation?: string;
   superficieTotale?: number;
+  idLieu?: number;
+  libelleLieu?: string;
   idVille?: number;
   nomVille?: string;
   createdAt?: string;

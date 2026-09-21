@@ -35,9 +35,16 @@ export type {
 export type {
   Ville,
   PrixM2,
+  Lieu,
   Propriete,
   Parcelle,
 } from './patrimoine';
+
+// Référentiels dossier (types & pièces fournies)
+export type {
+  TypeDossier,
+  DossierFournie,
+} from './typeDossier';
 
 // Dossiers
 export type {
@@ -59,6 +66,9 @@ export type {
   ParcelleDemandee,
   ParcelleDemandeeRequest,
 } from './dossier';
+
+// Audit (historique des modifications)
+export type { AuditEntry } from './audit';
 
 // Suivi terrain
 export type {

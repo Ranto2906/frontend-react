@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
-import { dossierService, prixM2Service } from '../../services';
+import { dossierService, prixM2Service, proprieteService } from '../../services';
 import DocumentsDemandeur from './DocumentsDemandeur';
-import type { DemandeDossier, ParcelleDemandee, PrixM2, SuiviEtape, Etape, StatutCouleur } from '../../types';
+import type { DemandeDossier, ParcelleDemandee, PrixM2, SuiviEtape, Etape, StatutCouleur, AuditEntry } from '../../types';
 
 function formatDate(d?: string | null): string {
   return d ? new Date(d).toLocaleDateString('fr-FR') : '—';
@@ -20,6 +20,7 @@ export default function DetailDemande() {
   const [dos, setDos] = useState<DemandeDossier | null>(null);
   const [loading, setLoading] = useState(true);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+  const [lieuxProprietes, setLieuxProprietes] = useState<Record<number, string>>({});
   // Prix au m² de la ville du dossier (calcul TTC/HT à la volée)
   const [prixVille, setPrixVille] = useState<PrixM2 | null>(null);
 
@@ -32,6 +33,10 @@ export default function DetailDemande() {
   const [commentaire, setCommentaire] = useState('');
   const [savingEtape, setSavingEtape] = useState(false);
   const [etapeSuppression, setEtapeSuppression] = useState<SuiviEtape | null>(null);
+
+  // Historique des modifications (audit)
+  const [historique, setHistorique] = useState<AuditEntry[]>([]);
+  const [historiqueOuvert, setHistoriqueOuvert] = useState(false);
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -49,6 +54,33 @@ export default function DetailDemande() {
       setDos(d);
       setEtapes(e);
       setStatutsCouleur(sc);
+      try {
+        const idsProprietes = [...new Set(
+          (d.parcelles ?? [])
+            .map((parcelle) => parcelle.idPropriete)
+            .filter((idPropriete): idPropriete is number => idPropriete != null),
+        )];
+        const proprietes = await Promise.all(
+          idsProprietes.map(async (idPropriete) => {
+            try {
+              return await proprieteService.trouverParId(idPropriete);
+            } catch {
+              return null;
+            }
+          }),
+        );
+        setLieuxProprietes(Object.fromEntries(
+          proprietes
+            .filter((propriete): propriete is NonNullable<typeof propriete> => propriete != null && Boolean(propriete.libelleLieu))
+            .map((propriete) => [propriete.idPropriete, propriete.libelleLieu as string]),
+        ));
+      } catch {
+        setLieuxProprietes({});
+      }
+      // Historique des modifications (échec silencieux : section secondaire)
+      dossierService.listerModifications(Number(id))
+        .then((h) => setHistorique(h))
+        .catch(() => setHistorique([]));
       // Prix au m² de la ville du dossier (pour calculer les montants par parcelle)
       if (d.idVille != null) {
         prixM2Service.listerParVille(d.idVille)
@@ -90,6 +122,12 @@ export default function DetailDemande() {
 
   const formatAr = (n: number) =>
     n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+  const lieux = [...new Set(
+    (dos?.parcelles ?? [])
+      .map((p) => p.libelleLieu || p.nomLieu || (p.idPropriete != null ? lieuxProprietes[p.idPropriete] : undefined))
+      .filter((lieu): lieu is string => Boolean(lieu)),
+  )].join(', ');
 
   // Toast transmis par le formulaire
   useEffect(() => {
@@ -187,7 +225,7 @@ export default function DetailDemande() {
             </span>
           </div>
           <p className="text-gray-500 text-sm mt-1">
-            {dos.nomVille} — demande du {formatDate(dos.dateDemande ?? null)}
+            {lieux || 'Lieu non renseigné'} — demande du {formatDate(dos.dateDemande ?? null)}
             {dos.annee ? ` · année ${dos.annee}` : ''}
           </p>
         </div>
@@ -215,10 +253,12 @@ export default function DetailDemande() {
             <h2 className="font-semibold text-gray-800 mb-4">📋 Informations</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
               <Info label="Numéro de dossier" value={dos.numeroDossier} />
-              <Info label="Ville" value={dos.nomVille} />
+              <Info label="Type de dossier" value={dos.libelleTypeDossier} />
+              <Info label="Lieu" value={lieux || null} />
               <Info label="Date de la demande" value={formatDate(dos.dateDemande ?? null)} />
               <Info label="Date de validation" value={formatDate(dos.dateValidation ?? null)} />
               <Info label="Transmission" value={dos.transmission} />
+              <Info label="Dossier fournie" value={dos.libelleDossierFournie} />
               <Info label="Montant total" value={dos.montantTotal != null ? `${dos.montantTotal} Ar` : null} />
               <Info label="Résultat de l'étude" value={dos.resultatEtude} />
               <Info label="Créé le" value={formatDate(dos.dateCreation ?? null)} />
@@ -429,7 +469,41 @@ export default function DetailDemande() {
               </div>
             )}
           </div>
+
         </div>
+      </div>
+
+      {/* ── Historique des modifications (audit), en bas de la page ── */}
+      <div className="mt-6 bg-white rounded-xl border border-gray-200 shadow-sm p-6">
+        <button
+          type="button"
+          onClick={() => setHistoriqueOuvert((o) => !o)}
+          className="w-full flex items-center justify-between text-left group"
+        >
+          <h2 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
+            🕘 Historique des modifications
+            {historique.length > 0 && (
+              <span className="ml-2 text-xs font-normal text-gray-400">({historique.length})</span>
+            )}
+          </h2>
+          <span className={`text-gray-400 transition-transform ${historiqueOuvert ? 'rotate-180' : ''}`}>▾</span>
+        </button>
+        {historiqueOuvert && (
+          <div className="mt-4">
+            {historique.length === 0 ? (
+              <p className="text-sm text-gray-400 italic">Aucune modification enregistrée.</p>
+            ) : (
+              <div className="relative pl-4">
+                <div className="absolute left-[7px] top-1 bottom-1 w-0.5 bg-gray-200"></div>
+                <div className="space-y-3">
+                  {historique.map((h) => (
+                    <HistoriqueItem key={h.idAudit} entry={h} />
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── Modal suppression étape ── */}
@@ -462,6 +536,89 @@ export default function DetailDemande() {
           </div>
         </ModalOverlay>
       )}
+    </div>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+// Historique des modifications — une entrée d'audit lisible
+// ══════════════════════════════════════════════════════════════
+const LIBELLES_CHAMPS: Record<string, string> = {
+  numeroDossier: 'Numéro de dossier',
+  dateDemande: 'Date de la demande',
+  transmission: 'Transmission',
+  resultatEtude: 'Résultat de l\'étude',
+  observation: 'Observation',
+  dateValidation: 'Date de validation',
+  montantTotal: 'Montant total',
+  statut: 'Statut',
+  typeDossier: 'Type de dossier',
+  dossierFournie: 'Dossier fournie',
+  ville: 'Ville',
+  etape: 'Étape',
+  dateRealisation: 'Date de réalisation',
+  statutCouleur: 'Statut de l\'étape',
+  commentaire: 'Commentaire',
+};
+
+function parseJsonSafe(s?: string | null): Record<string, unknown> | null {
+  if (!s) return null;
+  try {
+    const v = JSON.parse(s);
+    return typeof v === 'object' && v !== null ? v : null;
+  } catch {
+    return null;
+  }
+}
+
+function HistoriqueItem({ entry }: { entry: AuditEntry }) {
+  const avant = parseJsonSafe(entry.anciennesValeurs);
+  const apres = parseJsonSafe(entry.nouvellesValeurs);
+  const champs = Array.from(new Set([...Object.keys(avant ?? {}), ...Object.keys(apres ?? {})]));
+
+  const icone =
+    entry.action === 'CREATE' ? '🟢' : entry.action === 'DELETE' ? '🔴' : '🔵';
+  const libelleAction =
+    entry.action === 'CREATE' ? 'Création du dossier'
+    : entry.action === 'DELETE' ? 'Suppression du dossier'
+    : entry.entiteType === 'suivi_dossier' ? 'Étape du suivi'
+    : 'Modification du dossier';
+
+  return (
+    <div className="relative">
+      <span className="absolute -left-4 top-1 w-4 h-4 rounded-full border-2 border-white shadow bg-gray-300 flex items-center justify-center text-[8px]">
+        {icone}
+      </span>
+      <div>
+        <div className="flex items-baseline justify-between gap-2 flex-wrap">
+          <p className="text-sm font-medium text-gray-800">{libelleAction}</p>
+          <p className="text-[10px] text-gray-400">
+            {entry.dateAction ? new Date(entry.dateAction).toLocaleString('fr-FR') : '—'}
+          </p>
+        </div>
+        {entry.nomUtilisateur && (
+          <p className="text-xs text-gray-500">par {entry.nomUtilisateur}</p>
+        )}
+        {champs.length > 0 && (
+          <div className="mt-1.5 space-y-0.5 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
+            {champs.map((champ) => {
+              const oldV = avant?.[champ];
+              const newV = apres?.[champ];
+              if (String(oldV ?? '') === String(newV ?? '')) return null; // inchangé
+              return (
+                <p key={champ} className="text-xs text-gray-600">
+                  <span className="font-medium text-gray-700">
+                    {LIBELLES_CHAMPS[champ] ?? champ} :
+                  </span>{' '}
+                  <span className="text-red-600 line-through decoration-red-300">{String(oldV ?? '—')}</span>{' '}
+                  <span className="text-gray-400">→</span>{' '}
+                  <span className="text-green-700 font-medium">{String(newV ?? '—')}</span>
+                </p>
+              );
+            })}
+          </div>
+        )}
+      </div>
     </div>
   );
 }

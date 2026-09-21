@@ -1,16 +1,24 @@
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { dossierService, villeService, importService } from '../../services';
+import { dossierService, villeService, importService, proprieteService } from '../../services';
 import type { DemandeDossier, Ville, Etape, PageResponse, StatistiquesDossier, ImportSituationDemandesResult } from '../../types';
 
 function formatDate(d?: string | null): string {
   return d ? new Date(d).toLocaleDateString('fr-FR') : '—';
 }
 
+function lieuxDuDossier(dossier: DemandeDossier, lieuxParPropriete: Record<number, string>): string {
+  const lieux = (dossier.parcelles ?? [])
+    .map((parcelle) => parcelle.libelleLieu || parcelle.nomLieu || (parcelle.idPropriete != null ? lieuxParPropriete[parcelle.idPropriete] : undefined))
+    .filter((lieu): lieu is string => Boolean(lieu));
+  return [...new Set(lieux)].join(', ') || '—';
+}
+
 export default function Demandes() {
   const navigate = useNavigate();
 
   const [list, setList] = useState<DemandeDossier[]>([]);
+  const [lieuxParPropriete, setLieuxParPropriete] = useState<Record<number, string>>({});
   const [page, setPage] = useState<PageResponse<DemandeDossier> | null>(null);
   const [currentPage, setCurrentPage] = useState(0);
   const [loading, setLoading] = useState(true);
@@ -77,6 +85,31 @@ export default function Demandes() {
       );
       setList(p.content);
       setPage(p);
+
+      const idsProprietes = [...new Set(
+        p.content.flatMap((dossier) => (dossier.parcelles ?? [])
+          .map((parcelle) => parcelle.idPropriete)
+          .filter((id): id is number => id != null)),
+      )];
+      if (idsProprietes.length > 0) {
+        const proprietes = await Promise.all(
+          idsProprietes.map(async (idPropriete) => {
+            try {
+              return await proprieteService.trouverParId(idPropriete);
+            } catch {
+              return null;
+            }
+          }),
+        );
+        setLieuxParPropriete((precedents) => ({
+          ...precedents,
+          ...Object.fromEntries(
+            proprietes
+              .filter((propriete): propriete is NonNullable<typeof propriete> => propriete != null && Boolean(propriete.libelleLieu))
+              .map((propriete) => [propriete.idPropriete, propriete.libelleLieu as string]),
+          ),
+        }));
+      }
     } catch {
       showToast('Erreur lors du chargement des dossiers', false);
     } finally {
@@ -326,7 +359,7 @@ export default function Demandes() {
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">N° dossier</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Demandeur(s)</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Ville</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Lieu</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Date demande</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Avancement</th>
                 <th className="text-center px-4 py-3 font-medium text-gray-600">Statut</th>
@@ -352,7 +385,7 @@ export default function Demandes() {
                       ? d.demandeurs.map((dm) => dm.nom).join(', ')
                       : <span className="text-gray-400">—</span>}
                   </td>
-                  <td className="px-4 py-3 text-gray-600">🏙️ {d.nomVille || '—'}</td>
+                  <td className="px-4 py-3 text-gray-600">📍 {lieuxDuDossier(d, lieuxParPropriete)}</td>
                   <td className="px-4 py-3 text-gray-600">{formatDate(d.dateDemande ?? null)}</td>
                   <td className="px-4 py-3">
                     {d.etapeActuelleLibelle ? (
@@ -504,6 +537,10 @@ export default function Demandes() {
                   <div className="bg-gray-50 rounded-lg p-3">
                     <p className="text-xs text-gray-500">Parcelles liées</p>
                     <p className="text-xl font-bold text-gray-800">{importResultat.parcellesLiees}</p>
+                  </div>
+                  <div className="bg-indigo-50 rounded-lg p-3">
+                    <p className="text-xs text-gray-500">Lieux créés</p>
+                    <p className="text-xl font-bold text-indigo-700">{importResultat.lieuxImportes}</p>
                   </div>
                 </div>
                 {importResultat.erreurs.length > 0 && (

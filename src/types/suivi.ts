@@ -181,6 +181,7 @@ export interface ImportSituationDemandesResult {
   dossiersImportes: number;
   dossiersMisAJour: number;
   parcellesLiees: number;
+  lieuxImportes: number;
   personnesReutilisees: number;
   proprietesReutilisees: number;
   erreurs: string[];

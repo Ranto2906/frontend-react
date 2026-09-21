@@ -26,7 +26,7 @@ export interface CreateProprieteRequest {
   zone?: string;
   localisation?: string;
   superficieTotale?: number;
-  idVille?: number;
+  idLieu?: number;
 }
 
 export interface UpdateProprieteRequest {
@@ -35,7 +35,7 @@ export interface UpdateProprieteRequest {
   zone?: string;
   localisation?: string;
   superficieTotale?: number;
-  idVille?: number;
+  idLieu?: number;
 }
 
 export interface CreatePrixM2Request {

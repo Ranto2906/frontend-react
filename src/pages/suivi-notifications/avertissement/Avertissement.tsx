@@ -111,6 +111,17 @@ export default function Avertissement() {
         </button>
       </div>
 
+      {/* Cadre métier de la rubrique non notifié */}
+      <section className="mb-6 rounded-xl border border-amber-200 bg-amber-50 px-6 py-5 shadow-sm">
+        <h2 className="text-2xl font-bold text-amber-900">Non notifié</h2>
+        <p className="mt-2 max-w-5xl text-sm leading-6 text-amber-900/80">
+          Cette section regroupe les personnes prévenues à la suite d’une descente inopinée de l’équipe du
+          département du patrimoine, alors que celle-ci n’était pas munie du carnet de notification. L’objectif
+          de cette descente n’est pas de notifier les activités illicites, mais de formuler un avertissement verbal,
+          toujours dans le cadre de la sécurisation foncière, en profitant de ce passage inopiné sur site.
+        </p>
+      </section>
+
       {/* Filtres */}
       <div className="flex items-center gap-3 mb-4">
         <input

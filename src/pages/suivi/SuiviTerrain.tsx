@@ -34,6 +34,21 @@ export default function SuiviTerrain() {
           </p>
         </Link>
 
+        {/* Lieu */}
+        <Link
+          to="/suivi/lieux"
+          className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-teal-300 transition-all group"
+        >
+          <div className="text-3xl mb-3">📍</div>
+          <h2 className="text-lg font-semibold text-gray-800 group-hover:text-teal-600 transition-colors">
+            Lieu
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Configurer les lieux (quartiers, localités) rattachés aux villes et
+            utilisés par les propriétés.
+          </p>
+        </Link>
+
         {/* Prix au m² */}
         <Link
           to="/suivi/prix-m2"

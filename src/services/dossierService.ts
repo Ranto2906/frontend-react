@@ -13,6 +13,7 @@ import type {
   PageResponse,
   Propriete,
   Parcelle,
+  AuditEntry,
 } from '../types';
 
 // ════════════════════════════════════════════════════════════
@@ -74,6 +75,10 @@ export const dossierService = {
     dateMaj?: string;
   }> =>
     api.get(`/dossiers/prix-ville/${idVille}`).then((r) => r.data),
+
+  // ── Historique des modifications (audit) ──
+  listerModifications: (idDossier: number): Promise<AuditEntry[]> =>
+    api.get<AuditEntry[]>(`/dossiers/${idDossier}/modifications`).then((r) => r.data),
 
   // ── Liste / recherche ──
   lister: (page = 0, size = 20): Promise<PageResponse<DemandeDossier>> =>

@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { proprieteService, villeService } from '../../../services';
-import type { Propriete, Ville, PageResponse } from '../../../types';
+import { proprieteService, lieuService, villeService } from '../../../services';
+import type { Propriete, Lieu, Ville, PageResponse } from '../../../types';
 
 type Modal =
   | { type: 'create' }
@@ -11,9 +11,11 @@ type Modal =
 
 export default function GestionPropriete() {
   const [proprietes, setProprietes] = useState<Propriete[]>([]);
+  const [lieux, setLieux] = useState<Lieu[]>([]);
   const [villes, setVilles] = useState<Ville[]>([]);
   const [page, setPage] = useState<PageResponse<Propriete> | null>(null);
   const [search, setSearch] = useState('');
+  const [selectedVille, setSelectedVille] = useState('');
   const [currentPage, setCurrentPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<Modal>(null);
@@ -27,27 +29,49 @@ export default function GestionPropriete() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
-      const [data, villesData] = await Promise.all([
-        search.trim()
-          ? proprieteService.rechercher(search.trim(), currentPage, 15)
-          : proprieteService.lister(currentPage, 15),
+      const [data, lieuxData, villesData] = await Promise.all([
+        selectedVille
+          ? proprieteService.listerParVille(Number(selectedVille)).then((items) => {
+            const filteredItems = search.trim()
+              ? items.filter((item) => item.nom.toLowerCase().includes(search.trim().toLowerCase()))
+              : items;
+            const size = 15;
+            const start = currentPage * size;
+            const content = filteredItems.slice(start, start + size);
+            return {
+              content,
+              totalElements: filteredItems.length,
+              totalPages: Math.ceil(filteredItems.length / size),
+              size,
+              number: currentPage,
+              first: currentPage === 0,
+              last: start + size >= filteredItems.length,
+              empty: content.length === 0,
+            };
+          })
+          : search.trim()
+            ? proprieteService.rechercher(search.trim(), currentPage, 15)
+            : proprieteService.lister(currentPage, 15),
+        lieuService.lister(),
         villeService.listerToutes(),
       ]);
       setPage(data);
       setProprietes(data.content);
+      setLieux(lieuxData);
       setVilles(villesData);
     } catch {
       showToast('Erreur lors du chargement des propriétés', false);
     } finally {
       setLoading(false);
     }
-  }, [search, currentPage]);
+  }, [search, selectedVille, currentPage]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
   const handleSearch = (value: string) => { setSearch(value); setCurrentPage(0); };
+  const handleVilleChange = (value: string) => { setSelectedVille(value); setCurrentPage(0); };
 
-  const handleCreate = async (data: { nom: string; numero?: string; zone?: string; localisation?: string; superficieTotale?: number; idVille?: number }) => {
+  const handleCreate = async (data: { nom: string; numero?: string; localisation?: string; superficieTotale?: number; idLieu?: number }) => {
     try {
       await proprieteService.creer(data);
       showToast('Propriété créée avec succès');
@@ -58,7 +82,7 @@ export default function GestionPropriete() {
     }
   };
 
-  const handleUpdate = async (id: number, data: { nom: string; numero?: string; zone?: string; localisation?: string; superficieTotale?: number; idVille?: number }) => {
+  const handleUpdate = async (id: number, data: { nom: string; numero?: string; localisation?: string; superficieTotale?: number; idLieu?: number }) => {
     try {
       await proprieteService.modifier(id, data);
       showToast('Propriété mise à jour');
@@ -103,8 +127,12 @@ export default function GestionPropriete() {
         </button>
       </div>
 
-      <div className="mb-4">
+      <div className="mb-4 flex flex-col sm:flex-row gap-3">
         <input type="text" value={search} onChange={(e) => handleSearch(e.target.value)} placeholder="🔍 Rechercher par nom..." className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" />
+        <select value={selectedVille} onChange={(e) => handleVilleChange(e.target.value)} className="w-full sm:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+          <option value="">Toutes les villes</option>
+          {villes.map((ville) => <option key={ville.idVille} value={ville.idVille}>{ville.nomVille}</option>)}
+        </select>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -122,10 +150,9 @@ export default function GestionPropriete() {
                 <th className="text-left px-4 py-3 font-medium text-gray-600">ID</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Nom</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Numéro</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Zone</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Localisation</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">Superficie</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Ville</th>
+                <th className="text-right px-4 py-3 font-medium text-gray-600">Superficie</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Lieu</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Créé le</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
               </tr>
@@ -141,15 +168,15 @@ export default function GestionPropriete() {
                     </div>
                   </td>
                   <td className="px-4 py-3 text-gray-600">{p.numero || '—'}</td>
-                  <td className="px-4 py-3 text-gray-600">{p.zone || '—'}</td>
-                  <td className="px-4 py-3 text-gray-600 text-xs">{p.localisation || '—'}</td>
+                  <td className="px-4 py-3 text-gray-600 text-xs">{p.nomVille || '—'}</td>
                   <td className="px-4 py-3 text-gray-600 text-right">{p.superficieTotale != null ? `${p.superficieTotale.toLocaleString('fr-FR')} m²` : '—'}</td>
-                  <td className="px-4 py-3 text-gray-600">{p.nomVille || '—'}</td>
+                  <td className="px-4 py-3 text-gray-600">{p.libelleLieu || '—'}</td>
                   <td className="px-4 py-3 text-gray-600 text-xs">
                     {p.createdAt ? new Date(p.createdAt).toLocaleDateString('fr-FR') : '—'}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
+                      <Link to={`/suivi/proprietes/${p.idPropriete}`} title="Voir le détail" className="p-1.5 rounded-lg hover:bg-orange-50 text-orange-600 transition-colors">👁️</Link>
                       <button onClick={() => setModal({ type: 'edit', propriete: p })} title="Modifier" className="p-1.5 rounded-lg hover:bg-blue-50 text-blue-600 transition-colors">✏️</button>
                       <button onClick={() => setModal({ type: 'delete', propriete: p })} title="Supprimer" className="p-1.5 rounded-lg hover:bg-red-50 text-red-600 transition-colors">🗑️</button>
                     </div>
@@ -171,15 +198,15 @@ export default function GestionPropriete() {
         )}
       </div>
 
-      {modal?.type === 'create' && <CreateProprieteModal villes={villes} onSave={handleCreate} onClose={() => setModal(null)} />}
-      {modal?.type === 'edit' && <EditProprieteModal propriete={modal.propriete} villes={villes} onSave={handleUpdate} onClose={() => setModal(null)} />}
+      {modal?.type === 'create' && <CreateProprieteModal lieux={lieux} onSave={handleCreate} onClose={() => setModal(null)} />}
+      {modal?.type === 'edit' && <EditProprieteModal propriete={modal.propriete} lieux={lieux} onSave={handleUpdate} onClose={() => setModal(null)} />}
       {modal?.type === 'delete' && <DeleteProprieteModal propriete={modal.propriete} onConfirm={handleDelete} onClose={() => setModal(null)} />}
     </div>
   );
 }
 
-function CreateProprieteModal({ villes, onSave, onClose }: { villes: Ville[]; onSave: (data: { nom: string; numero?: string; zone?: string; localisation?: string; superficieTotale?: number; idVille?: number }) => Promise<void>; onClose: () => void }) {
-  const [form, setForm] = useState({ nom: '', numero: '', zone: '', localisation: '', superficieTotale: '', idVille: 0 });
+function CreateProprieteModal({ lieux, onSave, onClose }: { lieux: Lieu[]; onSave: (data: { nom: string; numero?: string; localisation?: string; superficieTotale?: number; idLieu?: number }) => Promise<void>; onClose: () => void }) {
+  const [form, setForm] = useState({ nom: '', numero: '', localisation: '', superficieTotale: '', idLieu: 0 });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -196,10 +223,9 @@ function CreateProprieteModal({ villes, onSave, onClose }: { villes: Ville[]; on
       await onSave({
         nom: form.nom.trim(),
         numero: form.numero.trim() || undefined,
-        zone: form.zone.trim() || undefined,
         localisation: form.localisation.trim() || undefined,
         superficieTotale,
-        idVille: form.idVille || undefined,
+        idLieu: form.idLieu || undefined,
       });
     } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Erreur'); setSaving(false); }
   };
@@ -215,14 +241,13 @@ function CreateProprieteModal({ villes, onSave, onClose }: { villes: Ville[]; on
             <input type="text" value={form.nom} onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))} placeholder="ex: Terrain Anosizato" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
           </div>
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Numéro</label><input type="text" value={form.numero} onChange={(e) => setForm((f) => ({ ...f, numero: e.target.value }))} placeholder="ex: PR-001" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" /></div>
-          <div><label className="block text-sm font-medium text-gray-700 mb-1">Zone</label><input type="text" value={form.zone} onChange={(e) => setForm((f) => ({ ...f, zone: e.target.value }))} placeholder="ex: Zone A" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" /></div>
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Localisation</label><input type="text" value={form.localisation} onChange={(e) => setForm((f) => ({ ...f, localisation: e.target.value }))} placeholder="ex: Anosizato" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" /></div>
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Superficie totale (m²)</label><input type="number" step="0.001" value={form.superficieTotale} onChange={(e) => setForm((f) => ({ ...f, superficieTotale: e.target.value }))} placeholder="ex: 1250.5" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" /></div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
-            <select value={form.idVille || ''} onChange={(e) => setForm((f) => ({ ...f, idVille: Number(e.target.value) }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Lieu</label>
+            <select value={form.idLieu || ''} onChange={(e) => setForm((f) => ({ ...f, idLieu: Number(e.target.value) }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
               <option value="">— Sélectionner —</option>
-              {villes.map((v) => <option key={v.idVille} value={v.idVille}>{v.nomVille}</option>)}
+              {lieux.map((l) => <option key={l.idLieu} value={l.idLieu}>{l.libelle}{l.nomVille ? ` (${l.nomVille})` : ''}</option>)}
             </select>
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">
@@ -235,8 +260,8 @@ function CreateProprieteModal({ villes, onSave, onClose }: { villes: Ville[]; on
   );
 }
 
-function EditProprieteModal({ propriete, villes, onSave, onClose }: { propriete: Propriete; villes: Ville[]; onSave: (id: number, data: { nom: string; numero?: string; zone?: string; localisation?: string; superficieTotale?: number; idVille?: number }) => Promise<void>; onClose: () => void }) {
-  const [form, setForm] = useState({ nom: propriete.nom, numero: propriete.numero || '', zone: propriete.zone || '', localisation: propriete.localisation || '', superficieTotale: propriete.superficieTotale?.toString() || '', idVille: propriete.idVille || 0 });
+function EditProprieteModal({ propriete, lieux, onSave, onClose }: { propriete: Propriete; lieux: Lieu[]; onSave: (id: number, data: { nom: string; numero?: string; localisation?: string; superficieTotale?: number; idLieu?: number }) => Promise<void>; onClose: () => void }) {
+  const [form, setForm] = useState({ nom: propriete.nom, numero: propriete.numero || '', localisation: propriete.localisation || '', superficieTotale: propriete.superficieTotale?.toString() || '', idLieu: propriete.idLieu || 0 });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -253,10 +278,9 @@ function EditProprieteModal({ propriete, villes, onSave, onClose }: { propriete:
       await onSave(propriete.idPropriete, {
         nom: form.nom.trim(),
         numero: form.numero.trim() || undefined,
-        zone: form.zone.trim() || undefined,
         localisation: form.localisation.trim() || undefined,
         superficieTotale,
-        idVille: form.idVille || undefined,
+        idLieu: form.idLieu || undefined,
       });
     } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Erreur'); setSaving(false); }
   };
@@ -272,14 +296,13 @@ function EditProprieteModal({ propriete, villes, onSave, onClose }: { propriete:
             <input type="text" value={form.nom} onChange={(e) => setForm((f) => ({ ...f, nom: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" />
           </div>
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Numéro</label><input type="text" value={form.numero} onChange={(e) => setForm((f) => ({ ...f, numero: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" /></div>
-          <div><label className="block text-sm font-medium text-gray-700 mb-1">Zone</label><input type="text" value={form.zone} onChange={(e) => setForm((f) => ({ ...f, zone: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" /></div>
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Localisation</label><input type="text" value={form.localisation} onChange={(e) => setForm((f) => ({ ...f, localisation: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" /></div>
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Superficie totale (m²)</label><input type="number" step="0.001" value={form.superficieTotale} onChange={(e) => setForm((f) => ({ ...f, superficieTotale: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" /></div>
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">Ville</label>
-            <select value={form.idVille || ''} onChange={(e) => setForm((f) => ({ ...f, idVille: Number(e.target.value) }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+            <label className="block text-sm font-medium text-gray-700 mb-1">Lieu</label>
+            <select value={form.idLieu || ''} onChange={(e) => setForm((f) => ({ ...f, idLieu: Number(e.target.value) }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
               <option value="">— Sélectionner —</option>
-              {villes.map((v) => <option key={v.idVille} value={v.idVille}>{v.nomVille}</option>)}
+              {lieux.map((l) => <option key={l.idLieu} value={l.idLieu}>{l.libelle}{l.nomVille ? ` (${l.nomVille})` : ''}</option>)}
             </select>
           </div>
           <div className="flex justify-end gap-3 pt-4 border-t border-gray-200">

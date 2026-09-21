@@ -56,6 +56,20 @@ export default function SuiviDossier() {
             Enregistrer ou modifier les étapes d'une demande de terrain 
           </p>
         </Link>
+
+        <Link
+          to="/demandes/types-dossier"
+          className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-amber-300 transition-all group"
+        >
+          <div className="text-3xl mb-3">🗂️</div>
+          <h2 className="text-lg font-semibold text-gray-800 group-hover:text-amber-600 transition-colors">
+            Configuration des dossiers
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Gérer les types de dossier (liste déroulante du formulaire) et les
+            pièces « dossier fournie » proposées à la saisie.
+          </p>
+        </Link>
       </div>
     </div>
   );

@@ -16,6 +16,8 @@ export { villeService, proprieteService, prixM2Service, parcelleService } from '
 export { signalementService } from './signalementService';
 export { dossierService } from './dossierService';
 export { documentDemandeurService } from './documentDemandeurService';
+export { lieuService, typeDossierService, dossierFournieService } from './referentielDossierService';
+export type { CreateLieuRequest, UpdateLieuRequest } from './referentielDossierService';
 
 // Re-export de l'instance axios et des token helpers
 export { default as api, setTokens, clearTokens, getAccessToken, getRefreshToken } from './api';
