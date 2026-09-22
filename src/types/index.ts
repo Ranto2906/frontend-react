@@ -110,6 +110,14 @@ export type {
   VueRecouvrement,
 } from './document';
 
+// Carte interactive
+export type {
+  GeometrieCarte,
+  CoucheCarte,
+  EntiteCible,
+  EntiteSelectionnee,
+} from './carte';
+
 // Commun
 export type {
   PageResponse,

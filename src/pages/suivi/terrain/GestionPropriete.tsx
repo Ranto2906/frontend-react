@@ -16,6 +16,12 @@ export default function GestionPropriete() {
   const [page, setPage] = useState<PageResponse<Propriete> | null>(null);
   const [search, setSearch] = useState('');
   const [selectedVille, setSelectedVille] = useState('');
+  const [numero, setNumero] = useState('');
+  const [localisation, setLocalisation] = useState('');
+  const [selectedLieu, setSelectedLieu] = useState('');
+  const [superficieMin, setSuperficieMin] = useState('');
+  const [superficieMax, setSuperficieMax] = useState('');
+  const [filtresVisibles, setFiltresVisibles] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<Modal>(null);
@@ -29,12 +35,31 @@ export default function GestionPropriete() {
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
+      const filtresActifs = Boolean(
+        search.trim() || selectedVille || numero.trim() || localisation.trim()
+        || selectedLieu || superficieMin || superficieMax,
+      );
       const [data, lieuxData, villesData] = await Promise.all([
-        selectedVille
-          ? proprieteService.listerParVille(Number(selectedVille)).then((items) => {
-            const filteredItems = search.trim()
-              ? items.filter((item) => item.nom.toLowerCase().includes(search.trim().toLowerCase()))
-              : items;
+        filtresActifs
+          ? (selectedVille ? proprieteService.listerParVille(Number(selectedVille)) : proprieteService.lister(0, 500).then((result) => result.content)).then((items) => {
+            const normalizedSearch = search.trim().toLowerCase();
+            const normalizedNumero = numero.trim().toLowerCase();
+            const normalizedLocalisation = localisation.trim().toLowerCase();
+            const minimum = superficieMin ? Number(superficieMin) : undefined;
+            const maximum = superficieMax ? Number(superficieMax) : undefined;
+            const filteredItems = items.filter((item) => {
+              const texte = [item.nom, item.numero, item.localisation, item.libelleLieu, item.nomVille]
+                .filter(Boolean)
+                .join(' ')
+                .toLowerCase();
+              if (normalizedSearch && !texte.includes(normalizedSearch)) return false;
+              if (normalizedNumero && !(item.numero ?? '').toLowerCase().includes(normalizedNumero)) return false;
+              if (normalizedLocalisation && !(item.localisation ?? '').toLowerCase().includes(normalizedLocalisation)) return false;
+              if (selectedLieu && String(item.idLieu ?? '') !== selectedLieu) return false;
+              if (minimum !== undefined && (!Number.isFinite(minimum) || (item.superficieTotale ?? -1) < minimum)) return false;
+              if (maximum !== undefined && (!Number.isFinite(maximum) || (item.superficieTotale ?? Number.MAX_VALUE) > maximum)) return false;
+              return true;
+            });
             const size = 15;
             const start = currentPage * size;
             const content = filteredItems.slice(start, start + size);
@@ -49,14 +74,12 @@ export default function GestionPropriete() {
               empty: content.length === 0,
             };
           })
-          : search.trim()
-            ? proprieteService.rechercher(search.trim(), currentPage, 15)
-            : proprieteService.lister(currentPage, 15),
+          : proprieteService.lister(currentPage, 15),
         lieuService.lister(),
         villeService.listerToutes(),
       ]);
       setPage(data);
-      setProprietes(data.content);
+      setProprietes(Array.isArray(data.content) ? data.content : []);
       setLieux(lieuxData);
       setVilles(villesData);
     } catch {
@@ -64,12 +87,16 @@ export default function GestionPropriete() {
     } finally {
       setLoading(false);
     }
-  }, [search, selectedVille, currentPage]);
+  }, [search, selectedVille, numero, localisation, selectedLieu, superficieMin, superficieMax, currentPage]);
 
   useEffect(() => { loadData(); }, [loadData]);
 
   const handleSearch = (value: string) => { setSearch(value); setCurrentPage(0); };
   const handleVilleChange = (value: string) => { setSelectedVille(value); setCurrentPage(0); };
+  const handleFilterChange = (setter: (value: string) => void) => (value: string) => {
+    setter(value);
+    setCurrentPage(0);
+  };
 
   const handleCreate = async (data: { nom: string; numero?: string; localisation?: string; superficieTotale?: number; idLieu?: number }) => {
     try {
@@ -127,12 +154,31 @@ export default function GestionPropriete() {
         </button>
       </div>
 
-      <div className="mb-4 flex flex-col sm:flex-row gap-3">
-        <input type="text" value={search} onChange={(e) => handleSearch(e.target.value)} placeholder="🔍 Rechercher par nom..." className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" />
-        <select value={selectedVille} onChange={(e) => handleVilleChange(e.target.value)} className="w-full sm:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
-          <option value="">Toutes les villes</option>
-          {villes.map((ville) => <option key={ville.idVille} value={ville.idVille}>{ville.nomVille}</option>)}
-        </select>
+      <div className="mb-4 space-y-3">
+        <div className="flex flex-col sm:flex-row gap-3">
+          <input type="text" value={search} onChange={(e) => handleSearch(e.target.value)} placeholder="🔍 Nom, numéro, lieu, localisation..." className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm" />
+          <select value={selectedVille} onChange={(e) => handleVilleChange(e.target.value)} className="w-full sm:w-64 px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm">
+            <option value="">Toutes les villes</option>
+            {villes.map((ville) => <option key={ville.idVille} value={ville.idVille}>{ville.nomVille}</option>)}
+          </select>
+          <button type="button" onClick={() => setFiltresVisibles((visible) => !visible)} className="px-4 py-2 border border-gray-300 rounded-lg bg-white hover:bg-gray-50 text-sm text-gray-700">
+            {filtresVisibles ? 'Masquer les critères' : 'Plus de critères'}
+          </button>
+        </div>
+        {filtresVisibles && (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 p-4 bg-gray-50 border border-gray-200 rounded-lg">
+            <input type="text" value={numero} onChange={(e) => handleFilterChange(setNumero)(e.target.value)} placeholder="Numéro" className="px-3 py-2 border border-gray-300 rounded-lg outline-none text-sm" />
+            <input type="text" value={localisation} onChange={(e) => handleFilterChange(setLocalisation)(e.target.value)} placeholder="Localisation" className="px-3 py-2 border border-gray-300 rounded-lg outline-none text-sm" />
+            <select value={selectedLieu} onChange={(e) => handleFilterChange(setSelectedLieu)(e.target.value)} className="px-3 py-2 border border-gray-300 rounded-lg outline-none text-sm">
+              <option value="">Tous les lieux</option>
+              {lieux.map((lieu) => <option key={lieu.idLieu} value={lieu.idLieu}>{lieu.libelle}</option>)}
+            </select>
+            <div className="flex gap-2">
+              <input type="number" min="0" value={superficieMin} onChange={(e) => handleFilterChange(setSuperficieMin)(e.target.value)} placeholder="Superficie min" className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg outline-none text-sm" />
+              <input type="number" min="0" value={superficieMax} onChange={(e) => handleFilterChange(setSuperficieMax)(e.target.value)} placeholder="Superficie max" className="w-1/2 px-3 py-2 border border-gray-300 rounded-lg outline-none text-sm" />
+            </div>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">

@@ -18,6 +18,13 @@ export { dossierService } from './dossierService';
 export { documentDemandeurService } from './documentDemandeurService';
 export { lieuService, typeDossierService, dossierFournieService } from './referentielDossierService';
 export type { CreateLieuRequest, UpdateLieuRequest } from './referentielDossierService';
+export { geometrieService } from './geometrieService';
+export type {
+  GeometrieCreateRequest,
+  CoordonneesRequest,
+  CoordonneesPoint,
+  EntitesCiblesParams,
+} from './geometrieService';
 
 // Re-export de l'instance axios et des token helpers
 export { default as api, setTokens, clearTokens, getAccessToken, getRefreshToken } from './api';
