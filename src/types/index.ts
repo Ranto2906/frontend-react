@@ -91,6 +91,17 @@ export type {
   ImportSituationDemandesResult,
 } from './suivi';
 
+// Descentes terrain (gestion mobile)
+export type {
+  DescenteTerrainDTO,
+  DescenteTerrainRequest,
+  DossierDescenteResult,
+  StatutConstatDescente,
+  StatutValidationDescente,
+  StatistiquesDescente,
+} from './descente';
+export { STATUTS_CONSTAT, STATUTS_VALIDATION } from './descente';
+
 // Signalements
 export type {
   Signalement,
@@ -117,6 +128,22 @@ export type {
   EntiteCible,
   EntiteSelectionnee,
 } from './carte';
+
+// Tableau de bord
+export type {
+  TableauBord,
+  TableauBordKpi,
+  TableauBordAvancement,
+  TableauBordGeometrie,
+  TableauBordFinances,
+  SerieMensuelle,
+  Repartition,
+  RepartitionMontant,
+  AlerteTableauBord,
+  DossierRecent,
+  SignalementRecent,
+  ActiviteRecente,
+} from './tableau-bord';
 
 // Commun
 export type {

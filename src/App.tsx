@@ -37,6 +37,9 @@ import Signalements from './pages/signalements/Signalements';
 import SignalementForm from './pages/signalements/SignalementForm';
 import DetailSignalement from './pages/signalements/DetailSignalement';
 import GestionMobile from './pages/gestion-mobile/GestionMobile';
+import DescentesTerrain from './pages/gestion-mobile/DescentesTerrain';
+import DescenteTerrainForm from './pages/gestion-mobile/DescenteTerrainForm';
+import DetailDescenteTerrain from './pages/gestion-mobile/DetailDescenteTerrain';
 import Finances from './pages/finances/Finances';
 import Admin from './pages/admin/Admin';
 import Utilisateurs from './pages/utilisateurs/Utilisateurs';
@@ -97,6 +100,10 @@ export default function App() {
             <Route path="suivi/parcelles" element={<GestionParcelle />} />
             <Route path="carte" element={<Carte />} />
             <Route path="gestion-mobile" element={<GestionMobile />} />
+            <Route path="descentes-terrain" element={<DescentesTerrain />} />
+            <Route path="descentes-terrain/nouveau" element={<DescenteTerrainForm />} />
+            <Route path="descentes-terrain/:id" element={<DetailDescenteTerrain />} />
+            <Route path="descentes-terrain/:id/modifier" element={<DescenteTerrainForm />} />
             <Route path="signalements" element={<Signalements />} />
             <Route path="signalements/nouveau" element={<SignalementForm />} />
             <Route path="signalements/:id/modifier" element={<SignalementForm />} />

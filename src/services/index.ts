@@ -14,11 +14,13 @@ export { photoService } from './photoService';
 export { importService } from './importService';
 export { villeService, proprieteService, prixM2Service, parcelleService } from './terrainService';
 export { signalementService } from './signalementService';
+export { descenteTerrainService } from './descenteTerrainService';
 export { dossierService } from './dossierService';
 export { documentDemandeurService } from './documentDemandeurService';
 export { lieuService, typeDossierService, dossierFournieService } from './referentielDossierService';
 export type { CreateLieuRequest, UpdateLieuRequest } from './referentielDossierService';
 export { geometrieService } from './geometrieService';
+export { statistiqueService } from './statistiqueService';
 export type {
   GeometrieCreateRequest,
   CoordonneesRequest,
