@@ -60,7 +60,12 @@ api.interceptors.response.use(
   async (error) => {
     const originalRequest = error.config;
 
-    if (error.response?.status === 401 && !originalRequest._retry) {
+    // Un 401 sur /auth/login (mauvais mot de passe) ou /auth/refresh (refresh
+    // invalide) ne doit PAS déclencher un nouveau refresh : on rejette tel quel.
+    const urlAuth = originalRequest?.url ?? '';
+    const estAppelAuth = /\/auth\/(login|refresh|logout)/.test(urlAuth);
+
+    if (error.response?.status === 401 && !originalRequest._retry && !estAppelAuth) {
       if (isRefreshing) {
         return new Promise((resolve, reject) => {
           failedQueue.push({ resolve, reject });

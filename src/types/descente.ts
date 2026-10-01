@@ -33,6 +33,8 @@ export const STATUTS_VALIDATION: StatutValidationDescente[] = [
   'Complement demande',
 ];
 
+import type { DemandeDossier } from './dossier';
+
 /** Miroir de DescenteTerrainDTO (GET/POST/PUT /api/descentes-terrain). */
 export interface DescenteTerrainDTO {
   idDescente: string;
@@ -79,6 +81,10 @@ export interface DescenteTerrainDTO {
   // Ville (depuis le dossier)
   idVille?: number;
   nomVille?: string;
+
+  /** Dossier complet (statut, type, dates, montant, demandeurs, parcelles, suivi) —
+   *  peuplé uniquement par GET /api/descentes-terrain/{id}. */
+  dossier?: DemandeDossier;
 }
 
 /** Corps d'écriture (POST/PUT /api/descentes-terrain). */
@@ -101,6 +107,8 @@ export interface DescenteTerrainRequest {
 export interface DossierDescenteResult {
   idDossierParcelle: string;
   numeroDossier?: string;
+  /** Date de demande du dossier (ISO yyyy-MM-dd). */
+  dateDemande?: string;
   superficie?: number;
   parcelle?: string;
   ville?: string;

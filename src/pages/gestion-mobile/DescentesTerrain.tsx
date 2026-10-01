@@ -1,9 +1,14 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { descenteTerrainService } from '../../services';
-import type { DescenteTerrainDTO, PageResponse } from '../../types';
+import type { DescenteTerrainDTO, DescenteTerrainRequest, DossierDescenteResult, PageResponse } from '../../types';
 
 type Modal = { type: 'delete'; d: DescenteTerrainDTO } | null;
+
+/** Vrai si la descente n'est rattachée à aucun dossier (ex. descente hors ligne synchronisée). */
+function estNonLiee(d: DescenteTerrainDTO): boolean {
+  return !d.idDossierParcelle;
+}
 
 /** Couleurs des statuts de constat relevés sur le terrain. */
 const COULEURS_CONSTAT: Record<string, string> = {
@@ -50,6 +55,7 @@ export default function DescentesTerrain() {
   const [currentPage, setCurrentPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<Modal>(null);
+  const [associer, setAssocier] = useState<DescenteTerrainDTO | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
   // Filtres
@@ -122,6 +128,29 @@ export default function DescentesTerrain() {
     } catch {
       showToast('Erreur lors de la suppression', false);
       setModal(null);
+    }
+  };
+
+  // ── Association à un dossier ──
+  const handleAssocie = async (d: DescenteTerrainDTO, r: DossierDescenteResult) => {
+    // Le PUT met à jour uniquement les champs fournis : on renvoie l'existant
+    // + la liaison sélectionnée (ligne dossier_parcelle + demandeur principal).
+    const payload: DescenteTerrainRequest = {
+      dateDescente: d.dateDescente || new Date().toISOString().slice(0, 10),
+      statutConstat: d.statutConstat,
+      mode: d.mode,
+      validation: d.validation,
+      idPersonne: r.demandeurId,
+      idDossierParcelle: r.idDossierParcelle,
+    };
+    try {
+      await descenteTerrainService.modifier(d.idDescente, payload);
+      showToast(`Descente ${d.reference || ''} associée au dossier ${r.numeroDossier || r.idDossierParcelle}`);
+      setAssocier(null);
+      setCurrentPage(0);
+      load();
+    } catch {
+      showToast('Erreur lors de l\'association au dossier', false);
     }
   };
 
@@ -299,6 +328,14 @@ export default function DescentesTerrain() {
                   </td>
                   <td className="px-4 py-3 text-gray-600">
                     {d.numeroDossier || '—'}
+                    {estNonLiee(d) && (
+                      <button
+                        onClick={() => setAssocier(d)}
+                        className="mt-1 inline-flex items-center gap-1 px-2 py-1 rounded-md bg-amber-50 hover:bg-amber-100 border border-amber-300 text-amber-700 text-xs font-medium transition-colors"
+                      >
+                        🔗 Associer à un dossier
+                      </button>
+                    )}
                     {(d.numeroLot || d.numeroPropriete) && (
                       <p className="text-xs text-gray-400">
                         {d.numeroLot ? `Lot ${d.numeroLot}` : ''}
@@ -390,6 +427,15 @@ export default function DescentesTerrain() {
       {modal?.type === 'delete' && (
         <DeleteModal d={modal.d} onConfirm={handleDelete} onClose={() => setModal(null)} />
       )}
+
+      {/* ── Modal association à un dossier ── */}
+      {associer && (
+        <AssocierDossierModal
+          d={associer}
+          onAssocier={handleAssocie}
+          onClose={() => setAssocier(null)}
+        />
+      )}
     </div>
   );
 }
@@ -445,6 +491,177 @@ function DeleteModal({
               className="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-lg font-medium transition-colors"
             >
               {saving ? 'Suppression...' : 'Supprimer'}
+            </button>
+          </div>
+        </div>
+      </div>
+    </ModalOverlay>
+  );
+}
+
+// ══════════════════════════════════════════════════════════════
+// MODAL : Associer une descente non liée à un dossier existant
+// ══════════════════════════════════════════════════════════════
+const DEBOUNCE_MS = 300;
+
+function AssocierDossierModal({
+  d,
+  onAssocier,
+  onClose,
+}: {
+  d: DescenteTerrainDTO;
+  onAssocier: (d: DescenteTerrainDTO, r: DossierDescenteResult) => Promise<void>;
+  onClose: () => void;
+}) {
+  const [search, setSearch] = useState('');
+  const [results, setResults] = useState<DossierDescenteResult[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [searched, setSearched] = useState(false);
+  const [selected, setSelected] = useState<DossierDescenteResult | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  // Recherche avec debounce — pré-remplie avec le numéro saisi hors ligne
+  // si l'utilisateur lance la recherche sans rien taper.
+  const lancerRecherche = useCallback(async (term: string) => {
+    setLoading(true);
+    try {
+      setResults(await descenteTerrainService.rechercherDossiers(term.trim()));
+      setSearched(true);
+    } catch {
+      setResults([]);
+      setSearched(true);
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  // Reset local (résultats) dès que la saisie repasse sous 2 caractères —
+  // l'effet ci-dessous ne gère que l'appel réseau différé.
+  const changerRecherche = (v: string) => {
+    setSearch(v);
+    if (v.trim().length < 2) {
+      setResults([]);
+      setSearched(false);
+    }
+  };
+
+  // Recherche différée — évite de charger toute la table au montage :
+  // il faut au moins 2 caractères (n° de dossier, nom, lot, date...).
+  useEffect(() => {
+    const term = search.trim();
+    if (term.length < 2) return undefined;
+    const t = setTimeout(() => {
+      lancerRecherche(term);
+    }, DEBOUNCE_MS);
+    return () => clearTimeout(t);
+  }, [search, lancerRecherche]);
+
+  const handleAssocier = async () => {
+    if (!selected) return;
+    setSaving(true);
+    try {
+      await onAssocier(d, selected);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <ModalOverlay onClose={onClose}>
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-auto max-h-[85vh] flex flex-col">
+        {/* En-tête */}
+        <div className="px-6 py-4 border-b border-amber-200 bg-amber-50">
+          <h2 className="text-lg font-bold text-amber-800">🔗 Associer à un dossier</h2>
+          <p className="text-xs text-amber-700 mt-0.5">
+            Descente <strong>{d.reference || d.idDescente.slice(0, 8)}</strong>
+            {d.dateDescente ? ` du ${formatDate(d.dateDescente)}` : ''} — aucun dossier rattaché.
+          </p>
+        </div>
+
+        {/* Recherche */}
+        <div className="p-5 pb-3">
+          <label className="block text-xs font-medium text-gray-500 mb-1">
+            Rechercher un dossier — n° de dossier, demandeur, propriété, parcelle, ville ou date de demande
+          </label>
+          <input
+            type="text"
+            autoFocus
+            value={search}
+            onChange={(e) => changerRecherche(e.target.value)}
+            placeholder="Ex. DOS-2026-00125, nom du demandeur, n° de lot..."
+            className="w-full px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none text-sm"
+          />
+          <p className="text-[11px] text-gray-400 mt-1">
+            Astuce : saisissez le numéro de dossier noté par l'agent pendant la descente hors ligne (2 caractères minimum).
+          </p>
+        </div>
+
+        {/* Résultats */}
+        <div className="px-5 pb-5 overflow-y-auto">
+          {loading ? (
+            <div className="py-8 text-center text-gray-400 text-sm">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-amber-600 mx-auto mb-2"></div>
+              Recherche...
+            </div>
+          ) : results.length === 0 ? (
+            <div className="py-8 text-center text-gray-400 text-sm">
+              {searched ? 'Aucun dossier trouvé pour cette recherche.' : 'Saisissez un terme pour rechercher un dossier.'}
+            </div>
+          ) : (
+            <ul className="divide-y divide-gray-100 border border-gray-200 rounded-lg overflow-hidden">
+              {results.map((r) => {
+                const actif = selected?.idDossierParcelle === r.idDossierParcelle;
+                return (
+                  <li key={r.idDossierParcelle}>
+                    <button
+                      onClick={() => setSelected(r)}
+                      className={`w-full text-left px-4 py-3 transition-colors ${
+                        actif ? 'bg-amber-50' : 'hover:bg-gray-50'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between gap-2 flex-wrap">
+                        <span className="font-semibold text-gray-800 text-sm">
+                          📁 {r.numeroDossier || r.idDossierParcelle.slice(0, 8)}
+                        </span>
+                        {r.dateDemande && (
+                          <span className="text-[11px] text-gray-400">Demande du {formatDate(r.dateDemande)}</span>
+                        )}
+                      </div>
+                      <p className="text-xs text-gray-500 mt-0.5 flex flex-wrap gap-x-3">
+                        {r.demandeurNom && <span>👤 {r.demandeurNom}</span>}
+                        {r.propriete && <span>🏠 Prop. {r.propriete}</span>}
+                        {r.parcelle && <span>🗺️ Lot {r.parcelle}</span>}
+                        {r.ville && <span>🏙️ {r.ville}</span>}
+                        {r.superficie != null && <span>📐 {r.superficie} m²</span>}
+                      </p>
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
+        </div>
+
+        {/* Actions */}
+        <div className="px-6 py-4 border-t border-gray-200 bg-gray-50 flex items-center justify-between gap-3">
+          <p className="text-xs text-gray-500 truncate">
+            {selected
+              ? <>Dossier sélectionné : <strong>{selected.numeroDossier || selected.idDossierParcelle}</strong></>
+              : 'Sélectionnez un dossier dans les résultats.'}
+          </p>
+          <div className="flex gap-2 shrink-0">
+            <button
+              onClick={onClose}
+              className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+            >
+              Annuler
+            </button>
+            <button
+              onClick={handleAssocier}
+              disabled={!selected || saving}
+              className="px-4 py-2 text-sm bg-amber-600 hover:bg-amber-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg font-medium transition-colors"
+            >
+              {saving ? 'Association...' : '🔗 Associer'}
             </button>
           </div>
         </div>

@@ -6,6 +6,7 @@ const TYPE_LABELS: Record<string, string> = {
   date_notification: '📷 Photos à la date de notification',
   photo_suivi: '📷 Photos à la date de suivi',
   constatation: '📷 Photo à la date de constatation',
+  constat: '📷 Photos du constat (terrain)',
   satellite_apres: '🛰️ Photo satellitaire après construction',
   satellite_avant: '🛰️ Photo satellitaire avant construction',
 };
@@ -14,6 +15,7 @@ const ORDER: string[] = [
   'date_notification',
   'photo_suivi',
   'constatation',
+  'constat',
   'satellite_apres',
   'satellite_avant',
 ];

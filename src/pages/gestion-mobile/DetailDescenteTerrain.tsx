@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { descenteTerrainService } from '../../services';
+import PhotosSection from '../suivi-notifications/PhotosSection';
 import type { DescenteTerrainDTO, DescenteTerrainRequest } from '../../types';
 
 const COULEURS_CONSTAT: Record<string, string> = {
@@ -24,7 +25,7 @@ function couleur(couleurs: Record<string, string>, valeur?: string): string {
   return couleurs[(valeur || '').toLowerCase()] || '#6b7280';
 }
 
-function formatDate(d?: string): string {
+function formatDate(d?: string | null): string {
   if (!d) return '—';
   return new Date(d).toLocaleDateString('fr-FR', { day: '2-digit', month: '2-digit', year: 'numeric' });
 }
@@ -34,6 +35,19 @@ function formatDateTime(d?: string): string {
   return new Date(d).toLocaleString('fr-FR', {
     day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit',
   });
+}
+
+/** Montant en ariary « 35 351 000 Ar ». */
+function montantAr(n?: string | number | null): string {
+  const v = typeof n === 'string' ? Number(n) : (n ?? 0);
+  return `${Math.round(v).toLocaleString('fr-FR')} Ar`;
+}
+
+/** % d'étapes réalisées du dossier (garde-fou division par zéro). */
+function tauxEtapes(d: NonNullable<DescenteTerrainDTO['dossier']>): number {
+  const total = d.suivi?.length ?? 0;
+  if (total === 0) return d.statutFinal ? 100 : 0;
+  return Math.round(((d.nombreEtapesRealisees ?? 0) / total) * 100);
 }
 
 /** Détail d'une descente : informations du dossier, constat et validation. */
@@ -148,6 +162,9 @@ export default function DetailDescenteTerrain() {
 
   const validationModifiee = validationChoisie !== (dt.validation || 'En attente');
 
+  /** Dossier complet (statut, type, dates, demandeurs, parcelles, suivi). */
+  const dossier = dt.dossier;
+
   return (
     <div className="flex-1 overflow-y-auto p-6">
       {/* Toast */}
@@ -220,36 +237,205 @@ export default function DetailDescenteTerrain() {
             </p>
           </div>
 
-          {/* Dossier rattaché */}
+          {/* Photos prises sur le terrain (mobile) — type d'entité « descente_terrain » */}
+          <PhotosSection entiteType="descente_terrain" entiteId={dt.idDescente} />
+
+          {/* Dossier rattaché — informations complètes */}
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
-            <h2 className="text-sm font-semibold text-gray-700 mb-3">📁 Dossier rattaché</h2>
-            {dt.numeroDossier || dt.numeroLot || dt.numeroPropriete ? (
-              <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
-                <div>
-                  <dt className="text-xs text-gray-500">Dossier</dt>
-                  <dd className="font-medium text-gray-800">{dt.numeroDossier || '—'}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-gray-500">Propriété</dt>
-                  <dd className="font-medium text-gray-800">{dt.numeroPropriete || '—'}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-gray-500">Parcelle (lot)</dt>
-                  <dd className="font-medium text-gray-800">{dt.numeroLot || '—'}</dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-gray-500">Superficie</dt>
-                  <dd className="font-medium text-gray-800">
-                    {dt.superficieM2 != null ? `${dt.superficieM2} m²` : '—'}
-                  </dd>
-                </div>
-                <div>
-                  <dt className="text-xs text-gray-500">Ville</dt>
-                  <dd className="font-medium text-gray-800">{dt.nomVille || '—'}</dd>
-                </div>
-              </dl>
-            ) : (
+            <div className="flex items-center justify-between mb-3 flex-wrap gap-2">
+              <h2 className="text-sm font-semibold text-gray-700">📁 Dossier rattaché</h2>
+              {dossier && (
+                <Link
+                  to={`/demandes/${dossier.idDossier}`}
+                  className="text-xs font-medium text-blue-600 hover:text-blue-800 hover:underline"
+                >
+                  Ouvrir le dossier complet →
+                </Link>
+              )}
+            </div>
+
+            {!dt.numeroDossier && !dt.numeroLot && !dt.numeroPropriete ? (
               <p className="text-sm text-gray-400">Aucun dossier rattaché à cette descente.</p>
+            ) : (
+              <>
+                {/* Identité + statut du dossier */}
+                <div className="flex items-center gap-2 flex-wrap mb-3">
+                  <span className="text-base font-bold text-gray-800">{dt.numeroDossier || '—'}</span>
+                  {dossier?.libelleStatut && (
+                    <span
+                      className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium text-white"
+                      style={{ background: dossier.couleurStatutHex || '#6b7280' }}
+                    >
+                      {dossier.libelleStatut}
+                      {dossier.statutFinal ? ' ✔' : ''}
+                    </span>
+                  )}
+                  {dossier?.libelleTypeDossier && (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-violet-100 text-violet-700">
+                      {dossier.libelleTypeDossier}
+                    </span>
+                  )}
+                  {dossier?.libelleDossierFournie && (
+                    <span className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium bg-gray-100 text-gray-600">
+                      {dossier.libelleDossierFournie}
+                    </span>
+                  )}
+                </div>
+
+                <dl className="grid grid-cols-2 md:grid-cols-3 gap-x-6 gap-y-3 text-sm">
+                  <div>
+                    <dt className="text-xs text-gray-500">Date de demande</dt>
+                    <dd className="font-medium text-gray-800">{formatDate(dossier?.dateDemande)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500">Année</dt>
+                    <dd className="font-medium text-gray-800">{dossier?.annee ?? '—'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500">Transmission</dt>
+                    <dd className="font-medium text-gray-800">{dossier?.transmission || '—'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500">Résultat d'étude</dt>
+                    <dd className="font-medium text-gray-800">{dossier?.resultatEtude || '—'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500">Validé le</dt>
+                    <dd className="font-medium text-gray-800">{formatDate(dossier?.dateValidation)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500">Montant total</dt>
+                    <dd className="font-medium text-gray-800">{montantAr(dossier?.montantTotal)}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500">Propriété</dt>
+                    <dd className="font-medium text-gray-800">{dt.numeroPropriete || '—'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500">Parcelle (lot)</dt>
+                    <dd className="font-medium text-gray-800">{dt.numeroLot || '—'}</dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500">Superficie</dt>
+                    <dd className="font-medium text-gray-800">
+                      {dt.superficieM2 != null ? `${dt.superficieM2} m²` : '—'}
+                    </dd>
+                  </div>
+                  <div>
+                    <dt className="text-xs text-gray-500">Ville</dt>
+                    <dd className="font-medium text-gray-800">{dossier?.nomVille || dt.nomVille || '—'}</dd>
+                  </div>
+                  {dossier?.observation && (
+                    <div className="col-span-2 md:col-span-3">
+                      <dt className="text-xs text-gray-500">Observation du dossier</dt>
+                      <dd className="text-gray-700 whitespace-pre-wrap">{dossier.observation}</dd>
+                    </div>
+                  )}
+                </dl>
+
+                {/* Avancement du workflow */}
+                {dossier && (
+                  <div className="mt-4 pt-3 border-t border-gray-100">
+                    <div className="flex items-center justify-between text-xs mb-1">
+                      <span className="text-gray-500">
+                        Avancement{dossier.etapeActuelleLibelle ? ` — étape : ${dossier.etapeActuelleLibelle}` : ''}
+                      </span>
+                      <span className="font-semibold text-gray-700">
+                        {dossier.nombreEtapesRealisees ?? 0} étape(s) réalisée(s)
+                      </span>
+                    </div>
+                    <div className="w-full h-2 bg-gray-100 rounded-full overflow-hidden">
+                      <div
+                        className="h-full rounded-full bg-blue-500 transition-all"
+                        style={{ width: `${tauxEtapes(dossier)}%` }}
+                      />
+                    </div>
+                  </div>
+                )}
+
+                {/* Demandeurs du dossier */}
+                {(dossier?.demandeurs ?? []).length > 0 && (
+                  <div className="mt-4 pt-3 border-t border-gray-100">
+                    <p className="text-xs text-gray-500 mb-2">
+                      Demandeurs ({dossier!.demandeurs!.length})
+                    </p>
+                    <ul className="space-y-1.5">
+                      {dossier!.demandeurs!.map((d) => (
+                        <li key={d.idPersonne} className="text-sm flex items-center gap-2 flex-wrap">
+                          <span className="font-medium text-gray-800">{d.nom}</span>
+                          {d.role && (
+                            <span className="text-[11px] px-1.5 py-0.5 rounded bg-blue-50 text-blue-700">{d.role}</span>
+                          )}
+                          {d.libelleTypePersonne && (
+                            <span className="text-[11px] text-gray-400">{d.libelleTypePersonne}</span>
+                          )}
+                          {d.contact && <span className="text-xs text-gray-500">· {d.contact}</span>}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+
+                {/* Parcelles du dossier */}
+                {(dossier?.parcelles ?? []).length > 1 && (
+                  <div className="mt-4 pt-3 border-t border-gray-100">
+                    <p className="text-xs text-gray-500 mb-2">
+                      Parcelles du dossier ({dossier!.parcelles!.length})
+                    </p>
+                    <table className="w-full text-xs">
+                      <thead>
+                        <tr className="text-gray-400 border-b border-gray-100">
+                          <th className="text-left font-medium py-1.5">Lot</th>
+                          <th className="text-left font-medium py-1.5">Propriété</th>
+                          <th className="text-right font-medium py-1.5">Superficie</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {dossier!.parcelles!.map((p, i) => (
+                          <tr
+                            key={p.idDossierParcelle ?? i}
+                            className={`border-b border-gray-50 last:border-0 ${
+                              p.idDossierParcelle === dt.idDossierParcelle ? 'bg-amber-50' : ''
+                            }`}
+                          >
+                            <td className="py-1.5 text-gray-700">{p.numeroLot || '—'}</td>
+                            <td className="py-1.5 text-gray-700">{p.numeroPropriete || p.nomPropriete || '—'}</td>
+                            <td className="py-1.5 text-right text-gray-700">
+                              {p.superficieM2 != null ? `${p.superficieM2} m²` : '—'}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                    <p className="text-[10px] text-gray-400 mt-1">La ligne de cette descente est surlignée.</p>
+                  </div>
+                )}
+
+                {/* Étapes de suivi */}
+                {(dossier?.suivi ?? []).length > 0 && (
+                  <div className="mt-4 pt-3 border-t border-gray-100">
+                    <p className="text-xs text-gray-500 mb-2">Étapes de suivi</p>
+                    <ol className="space-y-1.5">
+                      {dossier!.suivi!.map((s) => (
+                        <li key={s.idSuivi} className="text-xs flex items-center gap-2 flex-wrap">
+                          <span
+                            className="inline-block w-2.5 h-2.5 rounded-full shrink-0"
+                            style={{ background: s.dateRealisation ? (s.couleurStatutCouleurHex || '#16a34a') : '#e5e7eb' }}
+                          />
+                          <span className="text-gray-400 w-6">{s.ordreEtape}</span>
+                          <span className="font-medium text-gray-700">{s.libelleEtape}</span>
+                          {s.dateRealisation ? (
+                            <span className="text-gray-500">— réalisée le {formatDate(s.dateRealisation)}</span>
+                          ) : (
+                            <span className="text-gray-400 italic">— en attente</span>
+                          )}
+                          {s.commentaire && <span className="text-gray-400">· {s.commentaire}</span>}
+                        </li>
+                      ))}
+                    </ol>
+                  </div>
+                )}
+              </>
             )}
           </div>
 

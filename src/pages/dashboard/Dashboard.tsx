@@ -40,14 +40,9 @@ const COULEURS_VALIDATION: Record<string, string> = {
 const COULEUR_NOTIF = '#f59e0b';
 
 /** Styles des bandeaux d'alerte (niveau calculé côté backend). */
-const ALERTES_STYLES: Record<string, string> = {
-  info: 'bg-blue-50 border-blue-200 text-blue-700',
-  warning: 'bg-amber-50 border-amber-200 text-amber-800',
-  danger: 'bg-red-50 border-red-200 text-red-700',
-};
+
 
 /** Icône d'un bandeau d'alerte selon son niveau. */
-const ALERTES_ICONES: Record<string, string> = { info: 'ℹ️', warning: '⚠️', danger: '🚨' };
 
 export default function Dashboard() {
   const { user } = useAuth();
@@ -97,32 +92,20 @@ export default function Dashboard() {
   // ── Cartes KPI ──
   const k = stats?.kpi;
   const cartes = k ? [
-    { label: 'Dossiers', valeur: nombre(k.nbDossiers),
+    { label: 'Demandes', valeur: nombre(k.nbDossiers),
       detail: `${nombre(k.nbDossiersEnCours)} en cours · ${nombre(k.nbDossiersClotures)} clôturés`,
       icon: '📁', color: 'bg-blue-500', vers: '/demandes' },
-    { label: 'Propriétés', valeur: nombre(k.nbProprietes),
-      detail: superficie(k.superficieProprietes),
-      icon: '🏞️', color: 'bg-indigo-500', vers: '/suivi/proprietes' },
     { label: 'Parcelles', valeur: nombre(k.nbParcelles),
       detail: superficie(k.superficieParcelles),
       icon: '🧩', color: 'bg-orange-500', vers: '/suivi/parcelles' },
-    { label: 'Signalements', valeur: nombre(k.nbSignalements),
-      detail: `${nombre(k.nbSignalementsOuverts)} ouverts`,
-      icon: '📢', color: 'bg-rose-500', vers: '/signalements' },
-    { label: 'Descentes terrain', valeur: nombre(k.nbDescentes),
-      detail: `${nombre(k.nbDescentesEnAttente)} en attente de validation`,
-      icon: '🥾', color: 'bg-teal-500', vers: '/descentes-terrain' },
-    { label: 'CA théorique', valeur: montantAr(stats?.finances?.caTheorique ?? k.montantTotal),
-      detail: `CA réel ${montantAr(stats?.finances?.caReel)}`,
-      icon: '💰', color: 'bg-emerald-600', vers: '/finances' },
     { label: 'Notifications', valeur: nombre(k.nbNotifications),
       detail: `${nombre(k.nbNotificationsEnCours)} en cours`,
       icon: '🔔', color: 'bg-amber-500', vers: '/suivi-notifications/occupation' },
     { label: 'Avertissements', valeur: nombre(k.nbAvertissements),
       detail: `${nombre(k.nbPersonnes)} personnes référencées`,
       icon: '⚠️', color: 'bg-yellow-500', vers: '/suivi-notifications/avertissements' },
-    { label: 'Référentiels', valeur: `${nombre(k.nbVilles)} villes`,
-      detail: `${nombre(k.nbLieux)} lieux · ${nombre(k.nbDocuments)} documents`,
+    { label: 'Villes', valeur: nombre(k.nbVilles),
+      detail: 'Villes référencées',
       icon: '🏘️', color: 'bg-red-500', vers: '/suivi/villes' },
   ] : [];
 
@@ -223,20 +206,6 @@ export default function Dashboard() {
         <>
        
 
-          {/* ── Alertes ── */}
-          {(stats.alertes ?? []).length > 0 && (
-            <div className="space-y-2">
-              {stats.alertes.map((a, i) => (
-                <div
-                  key={`${a.niveau}-${i}`}
-                  className={`rounded-lg px-4 py-3 text-sm border flex items-start gap-2 ${ALERTES_STYLES[a.niveau] ?? ALERTES_STYLES.info}`}
-                >
-                  <span aria-hidden>{ALERTES_ICONES[a.niveau] ?? 'ℹ️'}</span>
-                  <span>{a.message}</span>
-                </div>
-              ))}
-            </div>
-          )}
 
           {/* ── KPI ── */}
           <div className="grid grid-cols-2 md:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-6 gap-4">
@@ -314,53 +283,6 @@ export default function Dashboard() {
               </div>
             </Section>
           </div>
-
-          {/* ── Synthèse financière ── */}
-          <Section
-            titre="Synthèse financière"
-            icone="💰"
-            action={
-              <span className="text-[11px] text-gray-400">
-                CA réel : statuts terminés · CA théorique : tous statuts
-              </span>
-            }
-          >
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-              <CarteMontant
-                label="CA réel"
-                valeur={stats.finances?.caReel}
-                sous="dossiers au statut terminé"
-                couleur="#16a34a"
-                icon="✅"
-              />
-              <CarteMontant
-                label="CA théorique"
-                valeur={stats.finances?.caTheorique}
-                sous="tous statuts confondus"
-                couleur="#2563eb"
-                icon="📊"
-              />
-              <CarteMontant
-                label="Taux de réalisation"
-                valeur={stats.finances?.tauxRealisation}
-                format="pourcent"
-                sous={`écart à réaliser : ${montantAr(stats.finances?.ecart)}`}
-                couleur="#f59e0b"
-                icon="🎯"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-5 mt-5">
-              <div>
-                <p className="text-xs text-gray-500 mb-2">Par ville</p>
-                <TableauMontants items={stats.finances?.parVille ?? []} vide="Aucun montant" />
-              </div>
-              <div>
-                <p className="text-xs text-gray-500 mb-2">Par année</p>
-                <TableauMontants items={stats.finances?.parAnnee ?? []} vide="Aucun montant" />
-              </div>
-            </div>
-          </Section>
 
           {/* ── Patrimoine, carte, suivi terrain ── */}
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
@@ -496,72 +418,6 @@ function Liste({
   );
 }
 
-/** Carte monétaire / de taux de la section Finances. */
-function CarteMontant({
-  label,
-  valeur,
-  format = 'montant',
-  sous,
-  couleur,
-  icon,
-}: {
-  label: string;
-  valeur?: number;
-  format?: 'montant' | 'pourcent';
-  sous?: string;
-  couleur: string;
-  icon: string;
-}) {
-  const affiche = format === 'pourcent'
-    ? `${(valeur ?? 0).toLocaleString('fr-FR', { maximumFractionDigits: 1 })} %`
-    : montantAr(valeur);
-  return (
-    <div className="rounded-xl border border-gray-200 p-4 bg-gray-50/50">
-      <div className="flex items-center gap-2 text-xs text-gray-500 mb-1">
-        <span aria-hidden>{icon}</span>
-        <span>{label}</span>
-      </div>
-      <p className="text-xl font-bold truncate" style={{ color: couleur }} title={affiche}>
-        {affiche}
-      </p>
-      {sous && <p className="text-[11px] text-gray-400 mt-0.5">{sous}</p>}
-    </div>
-  );
-}
-
-/** Tableau « libellé · montant · nombre » (Finances : par ville / par année). */
-function TableauMontants({
-  items,
-  vide,
-}: {
-  items: { libelle: string; montant: number; nombre: number }[];
-  vide: string;
-}) {
-  if (items.length === 0) {
-    return <p className="text-gray-400 text-sm italic">{vide}</p>;
-  }
-  return (
-    <table className="w-full text-xs">
-      <thead>
-        <tr className="text-gray-400 border-b border-gray-100">
-          <th className="text-left font-medium py-1.5">Libellé</th>
-          <th className="text-right font-medium py-1.5">Montant</th>
-          <th className="text-right font-medium py-1.5 w-16">Dossiers</th>
-        </tr>
-      </thead>
-      <tbody>
-        {items.map((it, idx) => (
-          <tr key={`${it.libelle}-${idx}`} className="border-b border-gray-50 last:border-0">
-            <td className="py-1.5 text-gray-700 truncate max-w-[10rem]" title={it.libelle}>{it.libelle}</td>
-            <td className="py-1.5 text-right font-semibold text-gray-800">{montantAr(it.montant)}</td>
-            <td className="py-1.5 text-right text-gray-500">{nombre(it.nombre)}</td>
-          </tr>
-        ))}
-      </tbody>
-    </table>
-  );
-}
-
 /** Bouton d'action rapide. */
 function BoutonAction({
   onClick,
@@ -588,11 +444,6 @@ function BoutonAction({
 
 function nombre(n?: number): string {
   return (n ?? 0).toLocaleString('fr-FR');
-}
-
-/** Montant en ariary « 35 351 000 Ar ». */
-function montantAr(n?: number): string {
-  return `${Math.round(n ?? 0).toLocaleString('fr-FR')} Ar`;
 }
 
 /** Superficie lisible (ha au-delà de 10 000 m²). */
