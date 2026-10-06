@@ -194,7 +194,7 @@ export default function Demandes() {
       {/* En-tête */}
       <div className="flex items-center justify-between mb-6">
         <div>
-          <h1 className="text-2xl font-bold text-gray-800">📁 Suivi de dossier</h1>
+          <h1 className="text-2xl font-bold text-gray-800">📁 Liste des dossier</h1>
           <p className="text-gray-500 text-sm mt-1">
             {total} demande{total > 1 ? 's' : ''} — demandeurs, étapes et avancement
           </p>
@@ -361,7 +361,6 @@ export default function Demandes() {
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Demandeur(s)</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Lieu</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Date demande</th>
-                <th className="text-left px-4 py-3 font-medium text-gray-600">Avancement</th>
                 <th className="text-center px-4 py-3 font-medium text-gray-600">Statut</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
               </tr>
@@ -387,22 +386,6 @@ export default function Demandes() {
                   </td>
                   <td className="px-4 py-3 text-gray-600">📍 {lieuxDuDossier(d, lieuxParPropriete)}</td>
                   <td className="px-4 py-3 text-gray-600">{formatDate(d.dateDemande ?? null)}</td>
-                  <td className="px-4 py-3">
-                    {d.etapeActuelleLibelle ? (
-                      <button
-                        onClick={() => setEtapeModal(d)}
-                        title="Changer l'étape de ce dossier"
-                        className="text-left group"
-                      >
-                        <p className="text-xs text-blue-600 group-hover:underline">{d.etapeActuelleLibelle}</p>
-                        {d.nombreEtapesRealisees != null && (
-                          <p className="text-[10px] text-gray-400">{d.nombreEtapesRealisees} étape(s) réalisée(s)</p>
-                        )}
-                      </button>
-                    ) : (
-                      <span className="text-green-600 text-xs font-medium">✓ Workflow terminé</span>
-                    )}
-                  </td>
                   <td className="px-4 py-3 text-center">
                     <span
                       className="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-medium text-white"

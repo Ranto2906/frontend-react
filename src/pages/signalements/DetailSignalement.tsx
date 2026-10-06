@@ -1,9 +1,10 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
-import { signalementService, photoService } from '../../services';
+import { signalementService, photoService, proprieteService } from '../../services';
 import MiniMap from '../../components/MiniMap';
-import type { Signalement, StatutSignalement, SignalementAudit, PhotoDTO, Parcelle } from '../../types';
+import type { Signalement, StatutSignalement, SignalementAudit, PhotoDTO, Parcelle, Propriete } from '../../types';
 import type { GeometrieDTO } from '../../services/signalementService';
+import { extraireProprieteManuelle } from '../../utils/proprieteManuelle';
 
 // Couleurs de repli si le backend ne fournit pas couleurStatutHex
 const COULEURS_STATUT: Record<string, string> = {
@@ -48,6 +49,8 @@ export default function DetailSignalement() {
   const [photos, setPhotos] = useState<PhotoDTO[]>([]);
   const [geometrie, setGeometrie] = useState<GeometrieDTO | null>(null);
   const [parcelle, setParcelle] = useState<Parcelle | null>(null);
+  /** Propriété rattachée (le DTO ne porte que l'id et le n°) — enrichit l'affichage. */
+  const [propriete, setPropriete] = useState<Propriete | null>(null);
   const [loading, setLoading] = useState(true);
   const [onglet, setOnglet] = useState<'infos' | 'validation' | 'historique'>('infos');
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
@@ -58,6 +61,13 @@ export default function DetailSignalement() {
   const [commentaire, setCommentaire] = useState('');
   const [validating, setValidating] = useState(false);
   const [expandedAudit, setExpandedAudit] = useState<number | null | undefined>(null);
+
+  // Propriété saisie manuellement sur le mobile (hors-ligne) — tracée en
+  // préfixe de la description (aucun champ serveur dédié). Affichée dans un
+  // encart dédié, jamais mélangée à l'observation.
+  const { proprieteManuelle, description: descriptionNettoyee } = sig
+    ? extraireProprieteManuelle(sig.description)
+    : { proprieteManuelle: '', description: '' };
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -83,6 +93,12 @@ export default function DetailSignalement() {
         signalementService.parcelle(s.idParcelle).then(setParcelle).catch(() => setParcelle(null));
       } else {
         setParcelle(null);
+      }
+      // Propriété complète (nom, n°, zone, ville) — le DTO ne porte que id + n°.
+      if (s.idPropriete) {
+        proprieteService.trouverParId(s.idPropriete).then(setPropriete).catch(() => setPropriete(null));
+      } else {
+        setPropriete(null);
       }
     } catch {
       showToast('Signalement introuvable', false);
@@ -260,13 +276,67 @@ export default function DetailSignalement() {
       {/* ── Onglet Informations — fiche complète (équivalent mobile) ── */}
       {onglet === 'infos' && (
         <div className="space-y-4">
+          {/* Propriété & ville — fiche complète du rattachement foncier */}
+          {(propriete || sig.nomVille || proprieteManuelle) && (
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+              <h2 className="text-sm font-semibold text-gray-700 mb-4">🏠 Propriété & ville</h2>
+              {propriete ? (
+                <div>
+                  <p className="text-base font-semibold text-gray-800">
+                    {propriete.nom || 'Propriété sans nom'}
+                    {propriete.numero ? ` · n° ${propriete.numero}` : ''}
+                  </p>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm mt-3">
+                    <Info label="Ville" value={[propriete.nomVille, sig.nomVille, parcelle?.nomVille].find(Boolean) || '—'} />
+                    <Info label="Lieu" value={propriete.libelleLieu || '—'} />
+                    {/* <Info label="Zone" value={propriete.zone || '—'} /> */}
+                    <Info
+                      label="Superficie totale"
+                      value={propriete.superficieTotale != null ? `${Number(propriete.superficieTotale).toLocaleString('fr-FR')} m²` : '—'}
+                    />
+                  </div>
+                  {propriete.localisation && (
+                    <p className="text-sm text-gray-700 mt-3">
+                      <span className="text-xs text-gray-400 uppercase">Localisation — </span>
+                      {propriete.localisation}
+                    </p>
+                  )}
+                </div>
+              ) : (
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                  <Info label="Ville" value={[sig.nomVille, parcelle?.nomVille].find(Boolean) || '—'} />
+                  {(sig.numeroPropriete || sig.idPropriete) && (
+                    <Info label="Propriété" value={sig.numeroPropriete || `#${sig.idPropriete}`} />
+                  )}
+                </div>
+              )}
+              {proprieteManuelle && (
+                <div className="mt-3 rounded-lg border border-amber-200 bg-amber-50 px-4 py-3">
+                  <p className="text-xs font-semibold uppercase tracking-wide text-amber-700">
+                    🏷️ Propriété saisie manuellement (mobile)
+                  </p>
+                  <p className="mt-1 text-sm font-medium text-amber-900 break-words">{proprieteManuelle}</p>
+                </div>
+              )}
+            </div>
+          )}
+
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
             <h2 className="text-sm font-semibold text-gray-700 mb-4">Localisation & rattachements</h2>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
               <Info label="Ville" value={sig.nomVille || parcelle?.nomVille ? `🏙️ ${sig.nomVille || parcelle?.nomVille}` : '—'} />
-              <Info label="Propriété" value={sig.numeroPropriete ? `n° ${sig.numeroPropriete}` : '—'} />
+              <Info
+                label="Propriété"
+                value={
+                  propriete
+                    ? [propriete.numero ? `n° ${propriete.numero}` : null, propriete.nom].filter(Boolean).join(' · ') || '—'
+                    : sig.numeroPropriete
+                      ? `n° ${sig.numeroPropriete}`
+                      : proprieteManuelle || '—'
+                }
+              />
               <Info label="Lot" value={sig.numeroLot ? `n° ${sig.numeroLot}` : '—'} />
-              <Info label="Dossier" value={sig.numeroDossier || '—'} />
+              {/* <Info label="Dossier" value={sig.numeroDossier || '—'} /> */}
             </div>
           </div>
 
@@ -279,15 +349,15 @@ export default function DetailSignalement() {
                 <div className="space-y-3 text-sm">
                   <Coordonnees geojson={geometrie.geojson} />
                   <div className="grid grid-cols-2 gap-3">
-                    <Info label="Précision GPS" value={geometrie.precisionM != null ? `±${Math.round(Number(geometrie.precisionM))} m` : '—'} />
-                    <Info label="Source" value={geometrie.source || '—'} />
-                    <Info label="Type" value={geometrie.typeGeometrie || '—'} />
-                    <Info
+                    {/* <Info label="Précision GPS" value={geometrie.precisionM != null ? `±${Math.round(Number(geometrie.precisionM))} m` : '—'} /> */}
+                    {/* <Info label="Source" value={geometrie.source || '—'} /> */}
+                    {/* <Info label="Type" value={geometrie.typeGeometrie || '—'} /> */}
+                    {/* <Info
                       label="Superficie calculée"
                       value={geometrie.superficieCalculeeM2 != null ? `${Number(geometrie.superficieCalculeeM2).toLocaleString('fr-FR')} m²` : '—'}
-                    />
+                    /> */}
                   </div>
-                  <Info label="Relevé le" value={formatDateTime(geometrie.dateCreation)} />
+                  {/* <Info label="Relevé le" value={formatDateTime(geometrie.dateCreation)} /> */}
                 </div>
               </div>
             ) : (
@@ -300,14 +370,14 @@ export default function DetailSignalement() {
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
               <h2 className="text-sm font-semibold text-gray-700 mb-4">🗺️ Parcelle & titre foncier</h2>
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                <Info label="N° propriété" value={parcelle?.numeroPropriete || sig.numeroPropriete || '—'} />
-                <Info label="Nom propriété" value={parcelle?.nomPropriete || '—'} />
+                <Info label="N° propriété" value={parcelle?.numeroPropriete || sig.numeroPropriete || propriete?.numero || '—'} />
+                <Info label="Nom propriété" value={parcelle?.nomPropriete || propriete?.nom || '—'} />
                 <Info label="Lot" value={parcelle?.numeroLot || sig.numeroLot || '—'} />
                 <Info
                   label="Superficie lot"
                   value={parcelle?.superficieM2 != null ? `${Number(parcelle.superficieM2).toLocaleString('fr-FR')} m²` : '—'}
                 />
-                <Info label="Zone" value={parcelle?.zonePropriete || '—'} />
+                {/* <Info label="Zone" value={parcelle?.zonePropriete || '—'} /> */}
                 <Info label="Localisation" value={parcelle?.localisationPropriete || '—'} />
                 <Info label="Ville (propriété)" value={parcelle?.nomVille || '—'} />
               </div>
@@ -323,7 +393,7 @@ export default function DetailSignalement() {
           <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
             <h2 className="text-sm font-semibold text-gray-700 mb-2">Description / observation</h2>
             <p className="text-sm text-gray-700 whitespace-pre-wrap">
-              {sig.description || <span className="text-gray-400 italic">Aucune description</span>}
+              {descriptionNettoyee || <span className="text-gray-400 italic">Aucune description</span>}
             </p>
           </div>
 

@@ -1,9 +1,10 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { signalementService, villeService, proprieteService, parcelleService } from '../../services';
+import { signalementService, villeService, proprieteService, parcelleService, photoService } from '../../services';
 import type {
-  Signalement, SignalementRequest, TypeSignalement, StatutSignalement, Ville, Propriete, Parcelle,
+  Signalement, SignalementRequest, TypeSignalement, StatutSignalement, Ville, Propriete, Parcelle, PhotoDTO,
 } from '../../types';
+import { composerDescriptionAvecProprieteManuelle, extraireProprieteManuelle } from '../../utils/proprieteManuelle';
 
 export default function SignalementForm() {
   const { id } = useParams<{ id: string }>();
@@ -25,9 +26,19 @@ export default function SignalementForm() {
     idParcelle: undefined,
   });
   const [sig, setSig] = useState<Signalement | null>(null);
+  /** Propriété saisie manuellement (mobile, hors-ligne) — stockée en préfixe de
+   *  la description (aucun champ serveur dédié) ; champ séparé à l'affichage. */
+  const [proprieteManuelle, setProprieteManuelle] = useState('');
   const [loading, setLoading] = useState(enEdition);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
+
+  // ── Photos du constat ──
+  /** Nouvelles photos sélectionnées (fichiers à envoyer). */
+  const [nouvellesPhotos, setNouvellesPhotos] = useState<File[]>([]);
+  /** Photos déjà enregistrées sur le serveur (édition — affichage seul). */
+  const [photosServeur, setPhotosServeur] = useState<PhotoDTO[]>([]);
+  const inputPhotoRef = useRef<HTMLInputElement>(null);
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -61,9 +72,13 @@ export default function SignalementForm() {
       try {
         const s = await signalementService.trouverParId(id);
         setSig(s);
+        // Propriété saisie manuellement (mobile) : extraite du préfixe de la
+        // description pour être affichée dans son propre champ du formulaire.
+        const extrait = extraireProprieteManuelle(s.description);
+        setProprieteManuelle(extrait.proprieteManuelle);
         setForm({
           reference: s.reference,
-          description: s.description ?? '',
+          description: extrait.description,
           dateSignalement: s.dateSignalement ?? new Date().toISOString().slice(0, 19),
           idTypeSignalement: s.idTypeSignalement ?? 0,
           idStatutSignalement: s.idStatutSignalement,
@@ -74,6 +89,8 @@ export default function SignalementForm() {
         if (s.idPropriete) {
           parcelleService.listerParPropriete(s.idPropriete).then(setParcelles).catch(() => undefined);
         }
+        // Photos déjà jointes (édition) — affichage seul, seules les nouvelles sont envoyées.
+        photoService.lister('signalement', s.idSignalement).then(setPhotosServeur).catch(() => undefined);
       } catch {
         showToast('Signalement introuvable', false);
         navigate('/signalements');
@@ -123,6 +140,9 @@ export default function SignalementForm() {
     try {
       const payload: SignalementRequest = {
         ...form,
+        // Recompose le préfixe `[Propriété : X]` du mobile (saisie manuelle
+        // hors-ligne) afin de conserver le format de stockage partagé.
+        description: composerDescriptionAvecProprieteManuelle(proprieteManuelle, form.description || ''),
         dateSignalement: form.dateSignalement?.length === 10
           ? `${form.dateSignalement}T00:00:00`
           : form.dateSignalement,
@@ -130,13 +150,38 @@ export default function SignalementForm() {
       const cree = enEdition
         ? await signalementService.modifier(id!, payload)
         : await signalementService.creer(payload);
+
+      // Photos : envoi après création/modification (endpoint multipart dédié).
+      // Un échec d'upload n'annule pas l'enregistrement du signalement.
+      let photosOk = 0;
+      let photosKo = 0;
+      for (const fichier of nouvellesPhotos) {
+        try {
+          await photoService.ajouter({
+            fichier,
+            entiteType: 'signalement',
+            entiteId: cree.idSignalement,
+            typePhoto: 'constat',
+          });
+          photosOk += 1;
+        } catch {
+          photosKo += 1;
+        }
+      }
+
+      const detailPhotos =
+        photosKo > 0
+          ? ` — ${photosKo}/${nouvellesPhotos.length} photo(s) non envoyée(s)`
+          : photosOk > 0
+            ? ` — ${photosOk} photo(s) envoyée(s)`
+            : '';
       navigate('/signalements', {
         state: {
           toast: {
             msg: enEdition
-              ? `Signalement ${cree.reference || ''} modifié`
-              : `Signalement ${cree.reference || ''} créé`,
-            ok: true,
+              ? `Signalement ${cree.reference || ''} modifié${detailPhotos}`
+              : `Signalement ${cree.reference || ''} créé${detailPhotos}`,
+            ok: photosKo === 0,
           },
         },
       });
@@ -274,6 +319,24 @@ export default function SignalementForm() {
           />
         </div>
 
+        {/* Propriété saisie manuellement (mobile, hors-ligne) — champ dédié ;
+            recollé en préfixe de la description à l'enregistrement. */}
+        {proprieteManuelle !== '' && (
+          <div>
+            <label className={labelCls}>🏷️ Propriété saisie manuellement (mobile)</label>
+            <input
+              type="text"
+              value={proprieteManuelle}
+              onChange={(e) => setProprieteManuelle(e.target.value)}
+              placeholder="ex : Terrain hors référentiel, saisi sur le terrain"
+              className={`${inputCls} border-amber-300 bg-amber-50 text-amber-900`}
+            />
+            <p className="mt-1 text-xs text-gray-400">
+              Saisie hors-ligne sur le mobile — conservée en préfixe de la description à l'enregistrement.
+            </p>
+          </div>
+        )}
+
         {/* Description */}
         <div>
           <label className={labelCls}>Description / observation</label>
@@ -284,6 +347,58 @@ export default function SignalementForm() {
             placeholder="Constat relevé sur le terrain..."
             className={inputCls}
           />
+        </div>
+
+        {/* Photos du constat — sélection + envoi multipart après enregistrement */}
+        <div>
+          <label className={labelCls}>Photos du constat</label>
+          {photosServeur.length > 0 && (
+            <div className="flex flex-wrap gap-3 mb-3">
+              {photosServeur.map((p) => (
+                <PhotoExistante key={p.idPhoto} idPhoto={p.idPhoto} />
+              ))}
+            </div>
+          )}
+          {nouvellesPhotos.length > 0 && (
+            <ul className="text-sm text-gray-600 mb-2 space-y-1">
+              {nouvellesPhotos.map((f, i) => (
+                <li key={`${f.name}-${i}`} className="flex items-center justify-between gap-2">
+                  <span className="truncate">📷 {f.name} <span className="text-gray-400">({Math.round(f.size / 1024)} Ko)</span></span>
+                  <button
+                    type="button"
+                    className="text-red-500 hover:text-red-700 text-xs"
+                    onClick={() => setNouvellesPhotos((prev) => prev.filter((_, idx) => idx !== i))}
+                  >
+                    Retirer
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <input
+            ref={inputPhotoRef}
+            type="file"
+            accept="image/jpeg,image/png,image/gif,image/webp"
+            multiple
+            className="hidden"
+            onChange={(e) => {
+              const fichiers = Array.from(e.target.files || []);
+              if (fichiers.length > 0) {
+                setNouvellesPhotos((prev) => [...prev, ...fichiers]);
+              }
+              e.target.value = ''; // permet de re-sélectionner le même fichier
+            }}
+          />
+          <button
+            type="button"
+            onClick={() => inputPhotoRef.current?.click()}
+            className="px-4 py-2 text-sm bg-gray-100 hover:bg-gray-200 text-gray-700 border border-gray-300 rounded-lg transition-colors"
+          >
+            📷 Ajouter des photos
+          </button>
+          <p className="text-xs text-gray-400 mt-1">
+            JPG, PNG, GIF ou WebP — envoyées au serveur après l'enregistrement.
+          </p>
         </div>
 
         <div className="flex justify-end gap-3 pt-2 border-t border-gray-100">
@@ -303,5 +418,50 @@ export default function SignalementForm() {
         </div>
       </form>
     </div>
+  );
+}
+
+/** Vignette d'une photo déjà enregistrée sur le serveur (contenu via JWT). */
+function PhotoExistante({ idPhoto }: { idPhoto: string }) {
+  const [url, setUrl] = useState<string | null>(null);
+  const [echec, setEchec] = useState(false);
+
+  useEffect(() => {
+    let annule = false;
+    let objUrl: string | null = null;
+    photoService
+      .contenu(idPhoto)
+      .then((blob) => {
+        if (annule) return;
+        objUrl = URL.createObjectURL(blob);
+        setUrl(objUrl);
+      })
+      .catch(() => {
+        if (!annule) setEchec(true);
+      });
+    return () => {
+      annule = true;
+      if (objUrl) URL.revokeObjectURL(objUrl);
+    };
+  }, [idPhoto]);
+
+  if (echec) {
+    return (
+      <div className="w-20 h-20 rounded-lg border border-gray-200 bg-gray-50 flex items-center justify-center text-gray-400 text-[10px]">
+        Illisible
+      </div>
+    );
+  }
+  if (!url) {
+    return <div className="w-20 h-20 rounded-lg border border-gray-200 bg-gray-50 animate-pulse" />;
+  }
+  return (
+    <a href={url} target="_blank" rel="noreferrer" title="Ouvrir en grand">
+      <img
+        src={url}
+        alt="photo du signalement"
+        className="w-20 h-20 object-cover rounded-lg border border-gray-200 hover:opacity-90 transition-opacity"
+      />
+    </a>
   );
 }

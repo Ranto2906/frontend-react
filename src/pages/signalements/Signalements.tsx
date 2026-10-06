@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { signalementService, villeService } from '../../services';
 import type { Signalement, Ville, PageResponse } from '../../types';
+import { extraireProprieteManuelle } from '../../utils/proprieteManuelle';
 
 type Modal = { type: 'delete'; sig: Signalement } | null;
 
@@ -316,7 +317,10 @@ export default function Signalements() {
                       {s.reference || '—'}
                     </Link>
                     {s.description && (
-                      <p className="text-xs text-gray-500 max-w-[220px] truncate">{s.description}</p>
+                      <p className="text-xs text-gray-500 max-w-[220px] truncate">
+                        {/* Propriété saisie manuellement (préfixe mobile) : affichée en badge, pas dans l'extrait. */}
+                        {extraireProprieteManuelle(s.description).description || '(sans observation)'}
+                      </p>
                     )}
                   </td>
                   <td className="px-4 py-3">

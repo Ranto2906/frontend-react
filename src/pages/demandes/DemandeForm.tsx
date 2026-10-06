@@ -1,6 +1,6 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { dossierService, villeService, lieuService, personService, documentDemandeurService, typeDossierService } from '../../services';
+import { dossierService, villeService, lieuService, personService, documentDemandeurService, typeDossierService, proprieteService } from '../../services';
 import DocumentsDemandeur from './DocumentsDemandeur';
 import PersonneDocumentsPicker, { type DocumentEnAttente } from '../../components/PersonneDocumentsPicker';
 import type {
@@ -99,6 +99,7 @@ export default function DemandeForm() {
   const [statuts, setStatuts] = useState<StatutDossier[]>([]);
   const [typesPersonne, setTypesPersonne] = useState<TypePersonne[]>([]);
   const [proprietes, setProprietes] = useState<Propriete[]>([]);
+  const [proprietesDuDossier, setProprietesDuDossier] = useState<Propriete[]>([]);
   const [parcellesParPropriete, setParcellesParPropriete] = useState<Record<number, Parcelle[]>>({});
   const [prixVille, setPrixVille] = useState<{ prixTtc: number; dateMaj?: string } | null>(null);
   const [recherchePropriete, setRecherchePropriete] = useState('');
@@ -172,18 +173,36 @@ export default function DemandeForm() {
         setTransmission(d.transmission ?? '');
         setResultatEtude(d.resultatEtude ?? '');
         setObservation(d.observation ?? '');
-        setLieu(d.lieu ?? '');
-        setRechercheLieu(d.lieu ?? '');
+        const lieuDuDossier = d.lieu?.trim()
+          || (d.parcelles?.map((p) => p.libelleLieu ?? p.nomLieu).find((libelle): libelle is string => Boolean(libelle)) ?? '');
+        setLieu(lieuDuDossier);
+        setRechercheLieu(lieuDuDossier);
         setIdStatutDossier(d.idStatutDossier != null ? String(d.idStatutDossier) : '');
         setIdTypeDossier(d.idTypeDossier != null ? String(d.idTypeDossier) : '');
         setDossierFournieTexte(d.libelleDossierFournie ?? '');
         setIdVille(String(d.idVille));
         setModeLieu('existant');
+        setProprietesDuDossier(
+          [...new Map(
+            (d.parcelles ?? [])
+              .filter((p): p is typeof p & { idPropriete: number | string } => p.idPropriete != null)
+              .map((p) => [
+                Number(p.idPropriete),
+                {
+                  idPropriete: Number(p.idPropriete),
+                  nom: p.nomPropriete || `Propriété #${p.idPropriete}`,
+                  numero: p.numeroPropriete ?? undefined,
+                  libelleLieu: p.libelleLieu ?? p.nomLieu ?? undefined,
+                  idVille: d.idVille,
+                } satisfies Propriete,
+              ]),
+          ).values()],
+        );
         setParcelleLignes(
           (d.parcelles ?? []).length > 0
             ? (d.parcelles ?? []).map((p, i) => ({
                 cle: i,
-                idPropriete: p.idPropriete ?? undefined,
+                idPropriete: p.idPropriete != null ? Number(p.idPropriete) : undefined,
                 idParcelle: p.idParcelle ?? undefined,
                 superficieM2: p.superficieM2 != null ? String(p.superficieM2) : '',
                 observation: p.observation ?? '',
@@ -191,13 +210,44 @@ export default function DemandeForm() {
             : [{ cle: 0, superficieM2: '', observation: '' }],
         );
         // Pré-charge les listes de parcelles des propriétés rattachées (édition)
-        [...new Set((d.parcelles ?? []).map((p) => p.idPropriete).filter((x): x is number => x != null))]
+        [...new Set(
+          (d.parcelles ?? [])
+            .map((p) => p.idPropriete != null ? Number(p.idPropriete) : undefined)
+            .filter((x): x is number => x != null && Number.isFinite(x)),
+        )]
           .forEach(async (idp) => {
             try {
               const list = await dossierService.listerParcellesPropriete(idp);
               setParcellesParPropriete((prev) => ({ ...prev, [idp]: list }));
             } catch { /* ignore */ }
           });
+        if (!lieuDuDossier) {
+          const idProprietes = [...new Set(
+            (d.parcelles ?? [])
+              .map((p) => p.idPropriete != null ? Number(p.idPropriete) : undefined)
+              .filter((x): x is number => x != null && Number.isFinite(x)),
+          )];
+          const proprietesDossier = await Promise.all(
+            idProprietes.map(async (idPropriete) => {
+              try {
+                return await proprieteService.trouverParId(idPropriete);
+              } catch {
+                return null;
+              }
+            }),
+          );
+          const proprieteAvecLieu = proprietesDossier.find((p) => p?.idLieu != null || p?.libelleLieu);
+          if (proprieteAvecLieu?.idLieu != null) {
+            try {
+              const lieuAssocie = await lieuService.trouverParId(proprieteAvecLieu.idLieu);
+              setLieu(lieuAssocie.libelle);
+              setRechercheLieu(lieuAssocie.libelle);
+            } catch { /* le dossier reste modifiable même si le lieu est indisponible */ }
+          } else if (proprieteAvecLieu?.libelleLieu) {
+            setLieu(proprieteAvecLieu.libelleLieu);
+            setRechercheLieu(proprieteAvecLieu.libelleLieu);
+          }
+        }
         setLignes(
           (d.demandeurs ?? []).map((dm, i) => ({
             cle: i,
@@ -234,13 +284,25 @@ export default function DemandeForm() {
     );
   }, [rechercheLieu, lieux]);
 
+  useEffect(() => {
+    if (!lieu.trim()) return;
+    const lieuExistant = lieux.find((l) => l.libelle.toLowerCase() === lieu.trim().toLowerCase());
+    if (lieuExistant && idVille !== String(lieuExistant.idVille)) {
+      setIdVille(String(lieuExistant.idVille));
+    }
+  }, [lieu, lieux, idVille]);
+
   const selectionnerLieu = (selection: Lieu) => {
+    const lieuDejaSelectionne = lieu.trim().toLowerCase() === selection.libelle.trim().toLowerCase()
+      && idVille === String(selection.idVille);
     setLieu(selection.libelle);
     setIdVille(String(selection.idVille));
     setRechercheLieu(selection.libelle);
     setResultatsLieux([]);
     setErreurLieu('');
-    setParcelleLignes((l) => l.map((li) => ({ ...li, idPropriete: undefined, idParcelle: undefined })));
+    if (!lieuDejaSelectionne) {
+      setParcelleLignes((l) => l.map((li) => ({ ...li, idPropriete: undefined, idParcelle: undefined })));
+    }
   };
 
   const creerEtSelectionnerLieu = async () => {
@@ -279,23 +341,34 @@ export default function DemandeForm() {
 
   // Propriétés de la ville sélectionnée, filtrées par recherche (min. 2 caractères)
   useEffect(() => {
-    setParcellesParPropriete({});
     if (!idVille) { setProprietes([]); return; }
     const q = recherchePropriete.trim();
     if (q.length < 2) {
       dossierService.listerProprietes(Number(idVille))
-        .then(setProprietes)
-        .catch(() => setProprietes([]));
+        .then((list) => {
+          setProprietes((precedentes) => {
+            const fusion = new Map(precedentes.map((p) => [p.idPropriete, p]));
+            list.forEach((p) => fusion.set(p.idPropriete, p));
+            proprietesDuDossier.forEach((p) => fusion.set(p.idPropriete, p));
+            return [...fusion.values()];
+          });
+        })
+        .catch(() => setProprietes(proprietesDuDossier));
       return;
     }
     const t = setTimeout(async () => {
       try {
         const r = await dossierService.listerProprietes(Number(idVille), q);
-        setProprietes(r);
+        setProprietes((precedentes) => {
+          const fusion = new Map(precedentes.map((p) => [p.idPropriete, p]));
+          r.forEach((p) => fusion.set(p.idPropriete, p));
+          proprietesDuDossier.forEach((p) => fusion.set(p.idPropriete, p));
+          return [...fusion.values()];
+        });
       } catch { /* conserve la liste courante */ }
     }, 300);
     return () => clearTimeout(t);
-  }, [recherchePropriete, idVille]);
+  }, [recherchePropriete, idVille, proprietesDuDossier]);
 
   const chargerParcelles = async (idPropriete: number) => {
     if (parcellesParPropriete[idPropriete]) return;
@@ -404,9 +477,9 @@ export default function DemandeForm() {
 
     // Parcelles demandées : seulement les lignes complètes (propriété choisie)
     const parcelles: ParcelleDemandeeRequest[] = parcelleLignes
-      .filter((li) => li.idPropriete)
+    .filter((li) => li.idPropriete != null && Number.isFinite(li.idPropriete))
       .map((li) => ({
-        idPropriete: li.idPropriete!,
+      idPropriete: Number(li.idPropriete),
         idParcelle: li.idParcelle || undefined,
         superficieM2: li.superficieM2 ? Number(li.superficieM2) : undefined,
         observation: li.observation.trim() || undefined,

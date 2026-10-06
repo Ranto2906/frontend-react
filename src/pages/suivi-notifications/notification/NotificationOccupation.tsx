@@ -165,10 +165,10 @@ export default function NotificationOccupation() {
             <thead className="bg-gray-50 border-b border-gray-200">
               <tr>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Propriété / Lot</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Personne notifiée</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Date notification</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Convocation</th>
                 <th className="text-center px-4 py-3 font-medium text-gray-600">Statut</th>
-                <th className="text-center px-4 py-3 font-medium text-gray-600">Occupants</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
               </tr>
             </thead>
@@ -187,6 +187,16 @@ export default function NotificationOccupation() {
                       </span>
                       <span className="block text-xs text-gray-500">Lot n° {n.numeroLot || '—'}</span>
                     </button>
+                  </td>
+                  <td className="px-4 py-3 text-gray-600">
+                    {(() => {
+                      const personnesNotifiees = (n.personnes ?? [])
+                        .filter((p) => p.roleDansNotification?.toLowerCase() === 'notifié')
+                        .map((p) => p.nomPersonne || `Personne #${p.idPersonne}`);
+                      return personnesNotifiees.length > 0
+                        ? personnesNotifiees.join(', ')
+                        : <span className="text-xs text-gray-400 italic">—</span>;
+                    })()}
                   </td>
                   <td className="px-4 py-3 text-gray-600">
                     {n.dateNotification
@@ -212,15 +222,6 @@ export default function NotificationOccupation() {
                     >
                       {n.statut}
                     </span>
-                  </td>
-                  <td className="px-4 py-3 text-center text-gray-600">
-                    {n.personnes && n.personnes.length > 0 ? (
-                      <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full bg-gray-100 text-gray-700 text-xs font-medium">
-                        👥 {n.personnes.length}
-                      </span>
-                    ) : (
-                      <span className="text-xs text-gray-400 italic">—</span>
-                    )}
                   </td>
                   <td className="px-4 py-3 text-right">
                     <div className="flex items-center justify-end gap-1">
