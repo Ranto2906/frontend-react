@@ -136,10 +136,11 @@ function SectionFinances({ stats, periodeActive }: { stats: TableauBord; periode
         <div className="rounded-lg bg-amber-50 border border-amber-100 p-4">
           <p className="text-xs text-amber-700 font-medium">🎯 Taux de réalisation du CA</p>
           <p className="text-2xl font-bold text-amber-800 mt-1">
-            {(stats.finances.tauxRealisation ?? 0).toLocaleString('fr-FR')} %
+            {/* 2 décimales : un taux < 1 % (grands CA théoriques) doit rester lisible. */}
+            {(stats.finances.tauxRealisation ?? 0).toLocaleString('fr-FR', { maximumFractionDigits: 2 })} %
           </p>
           <p className="text-[11px] text-amber-600 mt-1">
-            écart (en cours de traitement) : {monnaie(stats.finances.ecart)}
+            écart (non encaissé : en cours, rejeté ou annulé) : {monnaie(stats.finances.ecart)}
           </p>
         </div>
       </div>
@@ -155,16 +156,25 @@ function Montants({ titre, items }: {
   titre: string;
   items: { libelle: string; montant: number; nombre: number }[];
 }) {
+  const total = items.reduce((s, i) => s + (i.montant || 0), 0);
   return (
     <div>
-      <p className="text-xs text-gray-500 mb-2">{titre}</p>
+      <p className="text-xs text-gray-500 mb-2">
+        {titre}
+        {items.length > 0 && (
+          <span className="text-gray-400 ml-2">— total : <b className="text-gray-600">{monnaie(total)}</b></span>
+        )}
+      </p>
       {items.length === 0 ? (
         <p className="text-gray-400 text-sm italic">Aucune donnée</p>
       ) : (
         <ul className="space-y-1.5 text-xs">
           {items.map((item, index) => (
             <li key={`${item.libelle}-${index}`} className="flex items-center justify-between gap-3">
-              <span className="truncate text-gray-700" title={item.libelle}>{item.libelle}</span>
+              <span className="truncate text-gray-700" title={`${item.libelle} — ${item.nombre} dossier(s)`}>
+                {item.libelle}
+                <span className="text-gray-400 ml-1">({item.nombre})</span>
+              </span>
               <span className="font-semibold text-gray-800 shrink-0">{monnaie(item.montant)}</span>
             </li>
           ))}
