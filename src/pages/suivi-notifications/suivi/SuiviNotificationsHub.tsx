@@ -297,6 +297,20 @@ export default function SuiviNotificationsHub() {
             Tableau de suivi global de toutes les notifications : statut, historique, relances.
           </p>
         </Link>
+
+        {/* Assigner notification et signalement */}
+        <Link
+          to="/suivi-notifications/assignations"
+          className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-purple-300 transition-all group"
+        >
+          <div className="text-3xl mb-3">🔗</div>
+          <h2 className="text-lg font-semibold text-gray-800 group-hover:text-purple-600 transition-colors">
+            Assigner Notification et Signalement
+          </h2>
+          <p className="text-sm text-gray-500 mt-1">
+            Lier les signalements aux notifications d'occupation ou aux avertissements : liste, filtres, détail.
+          </p>
+        </Link>
       </div>
     </div>
   );

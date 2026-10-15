@@ -27,9 +27,17 @@ export default function Layout() {
       {/* Sidebar */}
       <aside className="w-64 bg-gray-900 text-white flex flex-col">
         <div className="p-4 border-b border-gray-700">
-          
-          <h1><img src={seimadLogo} alt="SEIMAD" className="h-16 w-full object-contain object-left" />Patrimoine Foncier</h1>
-          
+          <div className="flex items-center gap-3">
+            <img
+              src={seimadLogo}
+              alt="Seimad"
+              className="h-14 w-14 shrink-0 object-contain"
+            />
+            <div className="min-w-0">
+              <h1 className="text-lg font-semibold leading-tight">Seimad</h1>
+              <p className="mt-1 text-xs leading-tight text-gray-300">Patrimoine foncier</p>
+            </div>
+          </div>
         </div>
 
         <nav className="flex-1 p-2 space-y-1 overflow-y-auto">

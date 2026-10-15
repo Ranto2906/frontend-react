@@ -97,3 +97,30 @@ export interface StatistiquesSignalement {
   parStatut?: Record<string, number>;
   parType?: Record<string, number>;
 }
+
+// ── Assignation : lien signalement ↔ notification / avertissement ──
+export interface Assignation {
+  idAssignation: number;
+
+  // Signalement
+  idSignalement?: string;
+  referenceSignalement?: string;
+
+  // Cible : "notification" | "avertissement"
+  typeCible?: 'notification' | 'avertissement' | string;
+
+  // Si notification
+  idNotification?: string;
+  dateNotification?: string;
+  numeroProprieteNotification?: string;
+
+  // Si avertissement
+  idAvertissement?: string;
+  dateAvertissement?: string;
+  numeroProprieteAvertissement?: string;
+
+  // Trace
+  dateAssignation?: string;
+  idUtilisateur?: number;
+  nomUtilisateur?: string;
+}

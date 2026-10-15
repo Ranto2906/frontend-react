@@ -14,6 +14,7 @@ export { photoService } from './photoService';
 export { importService } from './importService';
 export { villeService, proprieteService, prixM2Service, parcelleService } from './terrainService';
 export { signalementService } from './signalementService';
+export { assignationService } from './assignationService';
 export { descenteTerrainService } from './descenteTerrainService';
 export { dossierService } from './dossierService';
 export { documentDemandeurService } from './documentDemandeurService';

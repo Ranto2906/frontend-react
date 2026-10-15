@@ -32,6 +32,9 @@ import DetailAvertissement from './pages/suivi-notifications/avertissement/Detai
 import SuiviNotifications from './pages/suivi-notifications/suivi/SuiviNotifications';
 import SuiviForm from './pages/suivi-notifications/suivi/SuiviForm';
 import DetailSuiviNotification from './pages/suivi-notifications/notification/DetailSuiviNotification';
+import Assignations from './pages/suivi-notifications/assignation/Assignations';
+import DetailAssignation from './pages/suivi-notifications/assignation/DetailAssignation';
+import AssignationForm from './pages/suivi-notifications/assignation/AssignationForm';
 import Carte from './pages/carte/Carte';
 import Signalements from './pages/signalements/Signalements';
 import SignalementForm from './pages/signalements/SignalementForm';
@@ -90,6 +93,9 @@ export default function App() {
             <Route path="suivi-notifications/suivi/nouvelle" element={<SuiviForm />} />
             <Route path="suivi-notifications/suivi/:id/modifier" element={<SuiviForm />} />
             <Route path="suivi-notifications/suivi/:id" element={<DetailSuiviNotification />} />
+            <Route path="suivi-notifications/assignations" element={<Assignations />} />
+            <Route path="suivi-notifications/assignations/nouvelle" element={<AssignationForm />} />
+            <Route path="suivi-notifications/assignations/:id" element={<DetailAssignation />} />
             <Route path="suivi" element={<SuiviTerrain />} />
             <Route path="suivi/villes" element={<GestionVille />} />
             <Route path="suivi/lieux" element={<GestionLieu />} />

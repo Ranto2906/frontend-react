@@ -111,6 +111,7 @@ export type {
   SignalementTraitementRequest,
   SignalementAudit,
   StatistiquesSignalement,
+  Assignation,
 } from './signalement';
 
 // Documents & Alertes
