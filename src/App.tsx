@@ -30,6 +30,7 @@ import Avertissement from './pages/suivi-notifications/avertissement/Avertisseme
 import AvertissementForm from './pages/suivi-notifications/avertissement/AvertissementForm';
 import DetailAvertissement from './pages/suivi-notifications/avertissement/DetailAvertissement';
 import SuiviNotifications from './pages/suivi-notifications/suivi/SuiviNotifications';
+import GestionEtapesNotification from './pages/suivi-notifications/suivi/GestionEtapesNotification';
 import SuiviForm from './pages/suivi-notifications/suivi/SuiviForm';
 import DetailSuiviNotification from './pages/suivi-notifications/notification/DetailSuiviNotification';
 import Assignations from './pages/suivi-notifications/assignation/Assignations';
@@ -90,6 +91,7 @@ export default function App() {
             <Route path="suivi-notifications/avertissements/:id/modifier" element={<AvertissementForm />} />
             <Route path="suivi-notifications/avertissements/:id" element={<DetailAvertissement />} />
             <Route path="suivi-notifications/suivi" element={<SuiviNotifications />} />
+            <Route path="suivi-notifications/config-etapes" element={<GestionEtapesNotification />} />
             <Route path="suivi-notifications/suivi/nouvelle" element={<SuiviForm />} />
             <Route path="suivi-notifications/suivi/:id/modifier" element={<SuiviForm />} />
             <Route path="suivi-notifications/suivi/:id" element={<DetailSuiviNotification />} />

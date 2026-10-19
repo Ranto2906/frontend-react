@@ -65,12 +65,31 @@ export interface Avertissement {
   nomPersonne?: string;
 }
 
+export interface EtapeNotification {
+  idEtapeNotification: number;
+  codeEtape: string;
+  libelle: string;
+  ordre: number;
+  estFinal?: boolean;
+}
+
 export interface SuiviNotification {
   idSuivi: string;
   ordre?: number;
   dateSuivi?: string;
   constats?: string;
   actionsASuivre?: string;
+  // Workflow d'étapes (sur le modèle du suivi de dossier)
+  idEtapeNotification?: number;
+  codeEtape?: string;
+  libelleEtape?: string;
+  ordreEtape?: number;
+  etapeFinale?: boolean;
+  idStatutCouleur?: number;
+  codeStatutCouleur?: string;
+  libelleStatutCouleur?: string;
+  couleurStatutCouleurHex?: string;
+  commentaire?: string;
   // Notification liée
   idNotification?: string;
   numeroPropriete?: string;
@@ -85,6 +104,9 @@ export interface SuiviNotificationRequest {
   dateSuivi?: string;
   constats?: string;
   actionsASuivre?: string;
+  idEtapeNotification?: number;
+  idStatutCouleur?: number;
+  commentaire?: string;
 }
 
 export interface AvertissementRequest {

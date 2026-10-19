@@ -13,10 +13,8 @@ export type StatutConstatDescente =
 
 /** États de validation de la descente par l'administration. */
 export type StatutValidationDescente =
-  | 'En attente'
-  | 'Valide'
-  | 'Rejete'
-  | 'Complement demande';
+  | 'Bon pour la suite'
+  | 'En instance';
 
 export const STATUTS_CONSTAT: StatutConstatDescente[] = [
   'Conforme',
@@ -27,10 +25,8 @@ export const STATUTS_CONSTAT: StatutConstatDescente[] = [
 ];
 
 export const STATUTS_VALIDATION: StatutValidationDescente[] = [
-  'En attente',
-  'Valide',
-  'Rejete',
-  'Complement demande',
+  'Bon pour la suite',
+  'En instance',
 ];
 
 import type { DemandeDossier } from './dossier';

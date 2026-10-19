@@ -1,5 +1,6 @@
 import api from './api';
 import type {
+  EtapeNotification,
   SuiviNotification,
   SuiviNotificationRequest,
   PageResponse,
@@ -11,6 +12,19 @@ import type {
 // ══════════════════════════════════════════════════════════════
 
 export const suiviNotificationService = {
+  // ── Référentiel des étapes : workflow type dossier ──
+  listerEtapes: (): Promise<EtapeNotification[]> =>
+    api.get<EtapeNotification[]>('/suivis/etapes').then((r) => r.data),
+
+  creerEtape: (request: { codeEtape: string; libelle: string; ordre: number; estFinal?: boolean }): Promise<EtapeNotification> =>
+    api.post<EtapeNotification>('/suivis/etapes', request).then((r) => r.data),
+
+  modifierEtape: (id: number, request: { codeEtape: string; libelle: string; ordre: number; estFinal?: boolean }): Promise<EtapeNotification> =>
+    api.put<EtapeNotification>(`/suivis/etapes/${id}`, request).then((r) => r.data),
+
+  supprimerEtapeReferentiel: (id: number) =>
+    api.delete(`/suivis/etapes/${id}`),
+
   // ── Liste paginée (tous les suivis) ──
   lister: (page = 0, size = 15): Promise<PageResponse<SuiviNotification>> =>
     api.get<PageResponse<SuiviNotification>>('/suivis', { params: { page, size } }).then((r) => r.data),

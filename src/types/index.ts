@@ -37,6 +37,7 @@ export type {
   PrixM2,
   Lieu,
   Propriete,
+  ProprieteType,
   Parcelle,
 } from './patrimoine';
 
@@ -78,6 +79,7 @@ export type {
   NotificationOccupationRequest,
   Avertissement,
   AvertissementRequest,
+  EtapeNotification,
   SuiviNotification,
   SuiviNotificationRequest,
   Personne,

@@ -24,6 +24,11 @@ export interface Lieu {
   updatedAt?: string;
 }
 
+export interface ProprieteType {
+  idTypePropriete: number;
+  libelle: string;
+}
+
 export interface Propriete {
   idPropriete: number;
   nom: string;
@@ -31,6 +36,7 @@ export interface Propriete {
   zone?: string;
   localisation?: string;
   superficieTotale?: number;
+  typePropriete?: ProprieteType;
   idLieu?: number;
   libelleLieu?: string;
   idVille?: number;

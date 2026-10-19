@@ -1,6 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { geometrieService, lieuService, parcelleService, proprieteService } from '../services';
-import type { EntiteCible, EntiteSelectionnee, Lieu } from '../types';
+import { geometrieService, lieuService, parcelleService, proprieteService, typeProprieteService } from '../services';
+import type { EntiteCible, EntiteSelectionnee, Lieu, ProprieteType } from '../types';
 
 // ══════════════════════════════════════════════════════════════
 // Sélecteur d'entité de la carte interactive (module 4.6.1)
@@ -280,8 +280,9 @@ function ModaleCreationEntite({
 }
 
 function FormulairePropriete({ onClose, onCree }: { onClose: () => void; onCree: (v: EntiteSelectionnee) => void }) {
-  const [form, setForm] = useState({ nom: '', numero: '', zone: '', localisation: '', superficieTotale: '', idLieu: 0 });
+  const [form, setForm] = useState({ nom: '', numero: '', zone: '', localisation: '', superficieTotale: '', idLieu: 0, idTypePropriete: 0 });
   const [lieux, setLieux] = useState<Lieu[]>([]);
+  const [types, setTypes] = useState<ProprieteType[]>([]);
   const [erreur, setErreur] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -290,6 +291,9 @@ function FormulairePropriete({ onClose, onCree }: { onClose: () => void; onCree:
     lieuService.lister()
       .then((data) => { if (!annule) setLieux(data); })
       .catch(() => { if (!annule) setLieux([]); });
+    typeProprieteService.lister()
+      .then((data) => { if (!annule) setTypes(data); })
+      .catch(() => { if (!annule) setTypes([]); });
     return () => { annule = true; };
   }, []);
 
@@ -298,6 +302,7 @@ function FormulairePropriete({ onClose, onCree }: { onClose: () => void; onCree:
     setErreur('');
     if (!form.nom.trim()) { setErreur('Le nom est requis'); return; }
     if (!form.numero.trim()) { setErreur('Le numéro est requis'); return; }
+    if (!form.idTypePropriete) { setErreur('Le type de propriété est requis'); return; }
     if (!form.idLieu) { setErreur('Le lieu est requis'); return; }
     const superficie = form.superficieTotale ? Number(form.superficieTotale) : undefined;
     if (superficie !== undefined && (!Number.isFinite(superficie) || superficie < 0)) {
@@ -313,6 +318,7 @@ function FormulairePropriete({ onClose, onCree }: { onClose: () => void; onCree:
         localisation: form.localisation.trim() || undefined,
         superficieTotale: superficie,
         idLieu: form.idLieu,
+        idTypePropriete: form.idTypePropriete,
       });
       onCree({ type: 'propriete', id: String(cree.idPropriete), label: cree.nom });
     } catch (err) {
@@ -344,6 +350,15 @@ function FormulairePropriete({ onClose, onCree }: { onClose: () => void; onCree:
       <div>
         <label className="block text-xs font-medium text-gray-600 mb-1">Localisation (ville)</label>
         <input value={form.localisation} onChange={(e) => setForm((f) => ({ ...f, localisation: e.target.value }))} placeholder="ex : Antananarivo" className={champ} />
+      </div>
+      <div>
+        <label className="block text-xs font-medium text-gray-600 mb-1">Type de propriété *</label>
+        <select value={form.idTypePropriete || ''} onChange={(e) => setForm((f) => ({ ...f, idTypePropriete: Number(e.target.value) }))} className={champ}>
+          <option value="">— Sélectionner —</option>
+          {types.map((t) => (
+            <option key={t.idTypePropriete} value={t.idTypePropriete}>{t.libelle}</option>
+          ))}
+        </select>
       </div>
       <div className="grid grid-cols-2 gap-3">
         <div>

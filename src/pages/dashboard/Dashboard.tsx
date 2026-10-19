@@ -31,10 +31,8 @@ const COULEURS_GEO: Record<string, string> = {
 
 /** Couleurs des validations de descente terrain. */
 const COULEURS_VALIDATION: Record<string, string> = {
-  'En attente': '#f59e0b',
-  Valide: '#16a34a',
-  Rejete: '#dc2626',
-  'Complement demande': '#2563eb',
+  "Bon pour la suite": '#16a34a',
+  "En instance": '#f59e0b',
 };
 
 const COULEUR_NOTIF = '#f59e0b';

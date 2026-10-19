@@ -21,10 +21,8 @@ const COULEURS_CONSTAT: Record<string, string> = {
 
 /** Couleurs des états de validation administrative. */
 const COULEURS_VALIDATION: Record<string, string> = {
-  'en attente': '#b7791f',
-  valide: '#059669',
-  rejete: '#dc2626',
-  'complement demande': '#1a56db',
+  "bon pour la suite": '#059669',
+  "en instance": '#f59e0b',
 };
 
 const STATUTS_CONSTAT = [
@@ -35,7 +33,7 @@ const STATUTS_CONSTAT = [
   'Construction illegale',
 ];
 
-const STATUTS_VALIDATION = ['En attente', 'Valide', 'Rejete', 'Complement demande'];
+const STATUTS_VALIDATION = ['Bon pour la suite', 'En instance'];
 
 function couleur(couleurs: Record<string, string>, valeur?: string): string {
   return couleurs[(valeur || '').toLowerCase()] || '#6b7280';

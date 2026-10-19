@@ -13,13 +13,11 @@ const COULEURS_CONSTAT: Record<string, string> = {
 };
 
 const COULEURS_VALIDATION: Record<string, string> = {
-  'en attente': '#b7791f',
-  valide: '#059669',
-  rejete: '#dc2626',
-  'complement demande': '#1a56db',
+  "bon pour la suite": '#059669',
+  "en instance": '#f59e0b',
 };
 
-const STATUTS_VALIDATION = ['En attente', 'Valide', 'Rejete', 'Complement demande'];
+const STATUTS_VALIDATION = ['Bon pour la suite', 'En instance'];
 
 function couleur(couleurs: Record<string, string>, valeur?: string): string {
   return couleurs[(valeur || '').toLowerCase()] || '#6b7280';
@@ -77,7 +75,7 @@ export default function DetailDescenteTerrain() {
     try {
       const d = await descenteTerrainService.trouverParId(id);
       setDt(d);
-      setValidationChoisie(d.validation || 'En attente');
+      setValidationChoisie(d.validation || 'En instance');
       setErreur('');
     } catch {
       setErreur('Descente introuvable.');
@@ -160,7 +158,7 @@ export default function DetailDescenteTerrain() {
     );
   }
 
-  const validationModifiee = validationChoisie !== (dt.validation || 'En attente');
+  const validationModifiee = validationChoisie !== (dt.validation || 'En instance');
 
   /** Dossier complet (statut, type, dates, demandeurs, parcelles, suivi). */
   const dossier = dt.dossier;

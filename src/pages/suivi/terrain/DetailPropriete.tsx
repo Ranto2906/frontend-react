@@ -1,7 +1,7 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, Fragment } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { parcelleService, prixM2Service, proprieteService } from '../../../services';
-import type { Parcelle, PrixM2, Propriete } from '../../../types';
+import type { Parcelle, PrixM2, Propriete, AuditDTO } from '../../../types';
 
 const formatNumber = (value?: number) => value != null ? value.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) : '—';
 const formatPrice = (value?: number) => value != null ? `${value.toLocaleString('fr-FR')} Ar` : '—';
@@ -11,6 +11,8 @@ export default function DetailPropriete() {
   const [propriete, setPropriete] = useState<Propriete | null>(null);
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [prixM2, setPrixM2] = useState<PrixM2 | null>(null);
+  const [historique, setHistorique] = useState<AuditDTO[]>([]);
+  const [expandedHist, setExpandedHist] = useState<number | null>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -20,9 +22,10 @@ export default function DetailPropriete() {
     const loadData = async () => {
       try {
         const property = await proprieteService.trouverParId(Number(id));
-        const [propertyParcelles, cityPrices] = await Promise.all([
+        const [propertyParcelles, cityPrices, history] = await Promise.all([
           parcelleService.listerParPropriete(property.idPropriete),
           property.idVille ? prixM2Service.listerParVille(property.idVille) : Promise.resolve([]),
+          proprieteService.historique(property.idPropriete),
         ]);
 
         const latestPrice = cityPrices
@@ -32,6 +35,7 @@ export default function DetailPropriete() {
         setPropriete(property);
         setParcelles(propertyParcelles);
         setPrixM2(latestPrice);
+        setHistorique(history);
       } catch {
         setError('Propriété introuvable');
       } finally {
@@ -122,10 +126,146 @@ export default function DetailPropriete() {
         </div>
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5 p-6">
           <Info label="Numéro" value={propriete.numero} />
+          <Info label="Type de propriété" value={propriete.typePropriete?.libelle} />
           <Info label="Localisation" value={propriete.localisation} />
           <Info label="Lieu" value={propriete.libelleLieu} />
           <Info label="Ville" value={propriete.nomVille || (propriete.idVille ? `Ville #${propriete.idVille}` : undefined)} />
         </div>
+      </div>
+
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center gap-2">
+          <h2 className="text-lg font-bold text-gray-800">📜 Historique des modifications</h2>
+          {historique.length > 0 && (
+            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">
+              {historique.length} modification{historique.length > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+
+        {historique.length === 0 ? (
+          <div className="p-12 text-center">
+            <p className="text-gray-400 text-sm italic">Aucune modification enregistrée.</p>
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 w-8"></th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Action</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Type</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Numéro</th>
+                  <th className="text-right px-4 py-3 font-medium text-gray-600">Superficie</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Lieu</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Date</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {historique.map((entry, idx) => {
+                  const anciennes = entry.anciennesValeurs ? JSON.parse(entry.anciennesValeurs) : null;
+                  const nouvelles = entry.nouvellesValeurs ? JSON.parse(entry.nouvellesValeurs) : null;
+                  const isExpanded = expandedHist === idx;
+
+                  return (
+                    <Fragment key={entry.idAudit}>
+                      <tr className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3">
+                          <button
+                            onClick={() => setExpandedHist(isExpanded ? null : idx)}
+                            className="p-1 rounded hover:bg-gray-200 transition-colors"
+                            title={isExpanded ? 'Masquer' : 'Voir les détails'}
+                          >
+                            <span className={`w-2.5 h-2.5 rounded-full inline-block ${idx === 0 ? 'bg-blue-500' : 'bg-gray-300'}`} />
+                          </button>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${entry.action === 'CREATE' ? 'bg-green-100 text-green-800' : entry.action === 'UPDATE' ? 'bg-blue-100 text-blue-800' : entry.action === 'DELETE' ? 'bg-red-100 text-red-800' : 'bg-gray-100 text-gray-800'}`}>
+                            {entry.action || '—'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-xs">
+                          {entry.action === 'CREATE' ? nouvelles?.typePropriete : anciennes?.typePropriete || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-xs\" style={{ color: '#6b7280' }}>
+                          {entry.action === 'CREATE' ? nouvelles?.numero : anciennes?.numero || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-right">
+                          {entry.action === 'CREATE' ? nouvelles?.superficieTotale : anciennes?.superficieTotale || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-xs">
+                          {entry.action === 'CREATE' ? nouvelles?.libelleLieu : anciennes?.libelleLieu || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-xs text-gray-500">{formatDate(entry.dateAction)}</td>
+                      </tr>
+
+                      {isExpanded && (
+                        <tr key={`${entry.idAudit}-det`}>
+                          <td colSpan={7} className="px-6 py-4 bg-gray-50 border-t border-gray-100">
+                            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-3">
+                              {entry.action === 'CREATE' ? 'Propriété créée' : entry.action === 'DELETE' ? 'Propriété supprimée' : 'Valeurs avant modification'}
+                            </p>
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                              {entry.action !== 'CREATE' && anciennes && (
+                                <>
+                                  <div>
+                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Type</p>
+                                    <p className="text-sm text-gray-800">{anciennes.typePropriete || '—'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Numéro</p>
+                                    <p className="text-sm text-gray-800">{anciennes.numero || '—'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Superficie</p>
+                                    <p className="text-sm text-gray-800">{anciennes.superficieTotale ? `${Number(anciennes.superficieTotale).toLocaleString('fr-FR')} m²` : '—'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Lieu</p>
+                                    <p className="text-sm text-gray-800">{anciennes.libelleLieu || '—'}</p>
+                                  </div>
+                                </>
+                              )}
+                              {nouvelles && (
+                                <>
+                                  <div className="border-t border-gray-200 pt-3 mt-1 col-span-full">
+                                    <p className="text-xs font-medium text-blue-500 uppercase tracking-wide mb-1">Nouvelles valeurs</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Type</p>
+                                    <p className="text-sm text-blue-700">{nouvelles.typePropriete || '—'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Numéro</p>
+                                    <p className="text-sm text-blue-700">{nouvelles.numero || '—'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Superficie</p>
+                                    <p className="text-sm text-blue-700">{nouvelles.superficieTotale ? `${Number(nouvelles.superficieTotale).toLocaleString('fr-FR')} m²` : '—'}</p>
+                                  </div>
+                                  <div>
+                                    <p className="text-xs font-medium text-gray-500 uppercase tracking-wide mb-1">Lieu</p>
+                                    <p className="text-sm text-blue-700">{nouvelles.libelleLieu || '—'}</p>
+                                  </div>
+                                </>
+                              )}
+                            </div>
+                            {entry.nomUtilisateur && (
+                              <p className="text-xs text-gray-400 mt-3">
+                                Par <span className="font-medium text-gray-600">{entry.nomUtilisateur}</span>
+                                {entry.ipAdresse && <span className="ml-2">(IP: {entry.ipAdresse})</span>}
+                              </p>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -169,4 +309,15 @@ function Info({ label, value }: { label: string; value?: string }) {
       <p className="text-sm text-gray-800">{value || '—'}</p>
     </div>
   );
+}
+
+function formatDate(dateStr?: string) {
+  if (!dateStr) return '';
+  return new Date(dateStr).toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
 }

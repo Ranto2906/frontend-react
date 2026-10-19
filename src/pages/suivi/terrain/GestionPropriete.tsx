@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
-import { proprieteService, lieuService, villeService } from '../../../services';
-import type { Propriete, Lieu, Ville, PageResponse } from '../../../types';
+import { proprieteService, lieuService, villeService, typeProprieteService } from '../../../services';
+import type { Propriete, ProprieteType, Lieu, Ville, PageResponse } from '../../../types';
 
 type Modal =
   | { type: 'create' }
@@ -13,6 +13,7 @@ export default function GestionPropriete() {
   const [proprietes, setProprietes] = useState<Propriete[]>([]);
   const [lieux, setLieux] = useState<Lieu[]>([]);
   const [villes, setVilles] = useState<Ville[]>([]);
+  const [typesPropriete, setTypesPropriete] = useState<ProprieteType[]>([]);
   const [page, setPage] = useState<PageResponse<Propriete> | null>(null);
   const [search, setSearch] = useState('');
   const [selectedVille, setSelectedVille] = useState('');
@@ -91,6 +92,12 @@ export default function GestionPropriete() {
 
   useEffect(() => { loadData(); }, [loadData]);
 
+  useEffect(() => {
+    typeProprieteService.lister()
+      .then(setTypesPropriete)
+      .catch(() => setTypesPropriete([]));
+  }, []);
+
   const handleSearch = (value: string) => { setSearch(value); setCurrentPage(0); };
   const handleVilleChange = (value: string) => { setSelectedVille(value); setCurrentPage(0); };
   const handleFilterChange = (setter: (value: string) => void) => (value: string) => {
@@ -98,7 +105,7 @@ export default function GestionPropriete() {
     setCurrentPage(0);
   };
 
-  const handleCreate = async (data: { nom: string; numero?: string; localisation?: string; superficieTotale?: number; idLieu?: number }) => {
+  const handleCreate = async (data: { nom: string; numero?: string; localisation?: string; superficieTotale?: number; idLieu?: number; idTypePropriete: number }) => {
     try {
       await proprieteService.creer(data);
       showToast('Propriété créée avec succès');
@@ -109,7 +116,7 @@ export default function GestionPropriete() {
     }
   };
 
-  const handleUpdate = async (id: number, data: { nom: string; numero?: string; localisation?: string; superficieTotale?: number; idLieu?: number }) => {
+  const handleUpdate = async (id: number, data: { nom: string; numero?: string; localisation?: string; superficieTotale?: number; idLieu?: number; idTypePropriete: number }) => {
     try {
       await proprieteService.modifier(id, data);
       showToast('Propriété mise à jour');
@@ -197,7 +204,7 @@ export default function GestionPropriete() {
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Nom</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Numéro</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Ville</th>
-                <th className="text-right px-4 py-3 font-medium text-gray-600">Superficie</th>
+                <th className="text-left px-4 py-3 font-medium text-gray-600">Type de propriété</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Lieu</th>
                 <th className="text-left px-4 py-3 font-medium text-gray-600">Créé le</th>
                 <th className="text-right px-4 py-3 font-medium text-gray-600">Actions</th>
@@ -215,7 +222,7 @@ export default function GestionPropriete() {
                   </td>
                   <td className="px-4 py-3 text-gray-600">{p.numero || '—'}</td>
                   <td className="px-4 py-3 text-gray-600 text-xs">{p.nomVille || '—'}</td>
-                  <td className="px-4 py-3 text-gray-600 text-right">{p.superficieTotale != null ? `${p.superficieTotale.toLocaleString('fr-FR')} m²` : '—'}</td>
+                  <td className="px-4 py-3 text-gray-600">{p.typePropriete?.libelle || '—'}</td>
                   <td className="px-4 py-3 text-gray-600">{p.libelleLieu || '—'}</td>
                   <td className="px-4 py-3 text-gray-600 text-xs">
                     {p.createdAt ? new Date(p.createdAt).toLocaleDateString('fr-FR') : '—'}
@@ -244,15 +251,15 @@ export default function GestionPropriete() {
         )}
       </div>
 
-      {modal?.type === 'create' && <CreateProprieteModal lieux={lieux} onSave={handleCreate} onClose={() => setModal(null)} />}
-      {modal?.type === 'edit' && <EditProprieteModal propriete={modal.propriete} lieux={lieux} onSave={handleUpdate} onClose={() => setModal(null)} />}
+      {modal?.type === 'create' && <CreateProprieteModal lieux={lieux} types={typesPropriete} onSave={handleCreate} onClose={() => setModal(null)} />}
+      {modal?.type === 'edit' && <EditProprieteModal propriete={modal.propriete} lieux={lieux} types={typesPropriete} onSave={handleUpdate} onClose={() => setModal(null)} />}
       {modal?.type === 'delete' && <DeleteProprieteModal propriete={modal.propriete} onConfirm={handleDelete} onClose={() => setModal(null)} />}
     </div>
   );
 }
 
-function CreateProprieteModal({ lieux, onSave, onClose }: { lieux: Lieu[]; onSave: (data: { nom: string; numero?: string; localisation?: string; superficieTotale?: number; idLieu?: number }) => Promise<void>; onClose: () => void }) {
-  const [form, setForm] = useState({ nom: '', numero: '', localisation: '', superficieTotale: '', idLieu: 0 });
+function CreateProprieteModal({ lieux, types, onSave, onClose }: { lieux: Lieu[]; types: ProprieteType[]; onSave: (data: { nom: string; numero?: string; localisation?: string; superficieTotale?: number; idLieu?: number; idTypePropriete: number }) => Promise<void>; onClose: () => void }) {
+  const [form, setForm] = useState({ nom: '', numero: '', localisation: '', superficieTotale: '', idLieu: 0, idTypePropriete: 0 });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -260,6 +267,7 @@ function CreateProprieteModal({ lieux, onSave, onClose }: { lieux: Lieu[]; onSav
     e.preventDefault();
     setError('');
     if (!form.nom.trim()) return setError('Le nom est requis');
+    if (!form.idTypePropriete) return setError('Le type de propriété est requis');
     const superficieTotale = form.superficieTotale ? Number(form.superficieTotale) : undefined;
     if (superficieTotale !== undefined && (!Number.isFinite(superficieTotale) || superficieTotale < 0)) {
       return setError('La superficie doit être un nombre positif');
@@ -272,6 +280,7 @@ function CreateProprieteModal({ lieux, onSave, onClose }: { lieux: Lieu[]; onSav
         localisation: form.localisation.trim() || undefined,
         superficieTotale,
         idLieu: form.idLieu || undefined,
+        idTypePropriete: form.idTypePropriete,
       });
     } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Erreur'); setSaving(false); }
   };
@@ -290,6 +299,13 @@ function CreateProprieteModal({ lieux, onSave, onClose }: { lieux: Lieu[]; onSav
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Localisation</label><input type="text" value={form.localisation} onChange={(e) => setForm((f) => ({ ...f, localisation: e.target.value }))} placeholder="ex: Anosizato" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" /></div>
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Superficie totale (m²)</label><input type="number" step="0.001" value={form.superficieTotale} onChange={(e) => setForm((f) => ({ ...f, superficieTotale: e.target.value }))} placeholder="ex: 1250.5" className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" /></div>
           <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Type de propriété *</label>
+            <select value={form.idTypePropriete || ''} onChange={(e) => setForm((f) => ({ ...f, idTypePropriete: Number(e.target.value) }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+              <option value="">— Sélectionner —</option>
+              {types.map((t) => <option key={t.idTypePropriete} value={t.idTypePropriete}>{t.libelle}</option>)}
+            </select>
+          </div>
+          <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Lieu</label>
             <select value={form.idLieu || ''} onChange={(e) => setForm((f) => ({ ...f, idLieu: Number(e.target.value) }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
               <option value="">— Sélectionner —</option>
@@ -306,8 +322,8 @@ function CreateProprieteModal({ lieux, onSave, onClose }: { lieux: Lieu[]; onSav
   );
 }
 
-function EditProprieteModal({ propriete, lieux, onSave, onClose }: { propriete: Propriete; lieux: Lieu[]; onSave: (id: number, data: { nom: string; numero?: string; localisation?: string; superficieTotale?: number; idLieu?: number }) => Promise<void>; onClose: () => void }) {
-  const [form, setForm] = useState({ nom: propriete.nom, numero: propriete.numero || '', localisation: propriete.localisation || '', superficieTotale: propriete.superficieTotale?.toString() || '', idLieu: propriete.idLieu || 0 });
+function EditProprieteModal({ propriete, lieux, types, onSave, onClose }: { propriete: Propriete; lieux: Lieu[]; types: ProprieteType[]; onSave: (id: number, data: { nom: string; numero?: string; localisation?: string; superficieTotale?: number; idLieu?: number; idTypePropriete: number }) => Promise<void>; onClose: () => void }) {
+  const [form, setForm] = useState({ nom: propriete.nom, numero: propriete.numero || '', localisation: propriete.localisation || '', superficieTotale: propriete.superficieTotale?.toString() || '', idLieu: propriete.idLieu || 0, idTypePropriete: propriete.typePropriete?.idTypePropriete || 0 });
   const [error, setError] = useState('');
   const [saving, setSaving] = useState(false);
 
@@ -315,6 +331,7 @@ function EditProprieteModal({ propriete, lieux, onSave, onClose }: { propriete: 
     e.preventDefault();
     setError('');
     if (!form.nom.trim()) return setError('Le nom est requis');
+    if (!form.idTypePropriete) return setError('Le type de propriété est requis');
     const superficieTotale = form.superficieTotale ? Number(form.superficieTotale) : undefined;
     if (superficieTotale !== undefined && (!Number.isFinite(superficieTotale) || superficieTotale < 0)) {
       return setError('La superficie doit être un nombre positif');
@@ -327,6 +344,7 @@ function EditProprieteModal({ propriete, lieux, onSave, onClose }: { propriete: 
         localisation: form.localisation.trim() || undefined,
         superficieTotale,
         idLieu: form.idLieu || undefined,
+        idTypePropriete: form.idTypePropriete,
       });
     } catch (err: unknown) { setError(err instanceof Error ? err.message : 'Erreur'); setSaving(false); }
   };
@@ -344,6 +362,13 @@ function EditProprieteModal({ propriete, lieux, onSave, onClose }: { propriete: 
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Numéro</label><input type="text" value={form.numero} onChange={(e) => setForm((f) => ({ ...f, numero: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" /></div>
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Localisation</label><input type="text" value={form.localisation} onChange={(e) => setForm((f) => ({ ...f, localisation: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" /></div>
           <div><label className="block text-sm font-medium text-gray-700 mb-1">Superficie totale (m²)</label><input type="number" step="0.001" value={form.superficieTotale} onChange={(e) => setForm((f) => ({ ...f, superficieTotale: e.target.value }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none" /></div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Type de propriété *</label>
+            <select value={form.idTypePropriete || ''} onChange={(e) => setForm((f) => ({ ...f, idTypePropriete: Number(e.target.value) }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">
+              <option value="">— Sélectionner —</option>
+              {types.map((t) => <option key={t.idTypePropriete} value={t.idTypePropriete}>{t.libelle}</option>)}
+            </select>
+          </div>
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">Lieu</label>
             <select value={form.idLieu || ''} onChange={(e) => setForm((f) => ({ ...f, idLieu: Number(e.target.value) }))} className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none">

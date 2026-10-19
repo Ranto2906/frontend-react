@@ -12,7 +12,7 @@ export { avertissementService } from './avertissementService';
 export { suiviNotificationService } from './suiviNotificationService';
 export { photoService } from './photoService';
 export { importService } from './importService';
-export { villeService, proprieteService, prixM2Service, parcelleService } from './terrainService';
+export { villeService, proprieteService, prixM2Service, parcelleService, typeProprieteService } from './terrainService';
 export { signalementService } from './signalementService';
 export { assignationService } from './assignationService';
 export { descenteTerrainService } from './descenteTerrainService';

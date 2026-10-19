@@ -1,8 +1,14 @@
 import { useState, useEffect, Fragment } from 'react';
 import { useParams, useLocation, Link } from 'react-router-dom';
-import { notificationOccupationService } from '../../../services';
+import { notificationOccupationService, suiviNotificationService, dossierService } from '../../../services';
 import PhotosSection from '../PhotosSection';
-import type { NotificationOccupation, AuditDTO } from '../../../types';
+import type {
+  NotificationOccupation,
+  AuditDTO,
+  EtapeNotification,
+  SuiviNotification,
+} from '../../../types';
+import type { StatutCouleur } from '../../../types/dossier';
 
 const STATUT_COLORS: Record<string, string> = {
   'En cours': 'bg-yellow-100 text-yellow-800',
@@ -80,16 +86,33 @@ export default function DetailNotificationOccupation() {
   const [expandedIdx, setExpandedIdx] = useState<number | null>(0);
   const [error, setError] = useState('');
 
+  // ── Workflow d'étapes (sur le modèle du dossier) ──
+  const [etapes, setEtapes] = useState<EtapeNotification[]>([]);
+  const [statutsCouleur, setStatutsCouleur] = useState<StatutCouleur[]>([]);
+  const [suivis, setSuivis] = useState<SuiviNotification[]>([]);
+  const [etapeChoisie, setEtapeChoisie] = useState('');
+  const [dateSuivi, setDateSuivi] = useState('');
+  const [couleurChoisie, setCouleurChoisie] = useState('');
+  const [commentaireEtape, setCommentaireEtape] = useState('');
+  const [savingEtape, setSavingEtape] = useState(false);
+
   useEffect(() => {
     if (!id) return;
 
     Promise.all([
       notificationOccupationService.trouverParId(id),
       notificationOccupationService.historique(id),
+      // Workflow d'étapes : référentiel + couleurs + suivis existants
+      suiviNotificationService.listerParNotification(id).catch(() => []),
+      suiviNotificationService.listerEtapes().catch(() => []),
+      dossierService.listerStatutsCouleur().catch(() => []),
     ])
-      .then(([n, hist]) => {
+      .then(([n, hist, sv, et, cols]) => {
         setNotif(n);
         setHistorique(hist);
+        setSuivis(sv);
+        setEtapes(et);
+        setStatutsCouleur(cols);
       })
       .catch(() => setError('Notification introuvable'))
       .finally(() => setLoading(false));
@@ -105,6 +128,69 @@ export default function DetailNotificationOccupation() {
       minute: '2-digit',
     });
   };
+
+  const fmtDate = (dateStr?: string) => {
+    if (!dateStr) return '';
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString('fr-FR');
+  };
+
+  // ── Recharger fiche + suivis (après enregistrement/suppression d'une étape) ──
+  const rechargerWorkflow = () => {
+    if (!id) return;
+    Promise.all([
+      notificationOccupationService.trouverParId(id),
+      suiviNotificationService.listerParNotification(id).catch(() => []),
+    ])
+      .then(([n, sv]) => {
+        setNotif(n);
+        setSuivis(sv);
+      })
+      .catch(() => setError('Erreur de rechargement'));
+  };
+
+  // ── « Changement d'étape » : crée un suivi (étape + date + couleur + commentaire) ──
+  const enregistrerEtape = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!notif || !etapeChoisie) return;
+    setSavingEtape(true);
+    try {
+      await suiviNotificationService.creer({
+        idNotification: notif.idNotification,
+        idEtapeNotification: Number(etapeChoisie),
+        dateSuivi: dateSuivi || undefined,
+        idStatutCouleur: couleurChoisie ? Number(couleurChoisie) : undefined,
+        commentaire: commentaireEtape || undefined,
+      });
+      setToast({ msg: 'Étape enregistrée ✓', ok: true });
+      setTimeout(() => setToast(null), 4000);
+      setEtapeChoisie('');
+      setCouleurChoisie('');
+      setCommentaireEtape('');
+      rechargerWorkflow();
+    } catch {
+      setToast({ msg: "Échec de l'enregistrement de l'étape", ok: false });
+      setTimeout(() => setToast(null), 4000);
+    } finally {
+      setSavingEtape(false);
+    }
+  };
+
+  const supprimerSuivi = async (idSuivi: string) => {
+    try {
+      await suiviNotificationService.supprimer(idSuivi);
+      setToast({ msg: 'Étape retirée du suivi', ok: true });
+      setTimeout(() => setToast(null), 4000);
+      rechargerWorkflow();
+    } catch {
+      setToast({ msg: 'Échec de la suppression', ok: false });
+      setTimeout(() => setToast(null), 4000);
+    }
+  };
+
+  // Étapes du référentiel déjà réalisées pour cette notification
+  const etapesRealiseesIds = new Set(
+    suivis.map((s) => s.idEtapeNotification).filter((v): v is number => v != null)
+  );
 
   if (loading) {
     return (
@@ -286,6 +372,126 @@ export default function DetailNotificationOccupation() {
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* ── Workflow d'étapes (comme le dossier) ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
+        {/* Changement d'étape */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h2 className="text-lg font-bold text-gray-800 mb-4">🔄 Changement d'étape</h2>
+          <form onSubmit={enregistrerEtape} className="space-y-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Étape réalisée</label>
+              <select
+                required
+                value={etapeChoisie}
+                onChange={(e) => setEtapeChoisie(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              >
+                <option value="">— Choisir —</option>
+                {etapes.map((et) => (
+                  <option key={et.idEtapeNotification} value={et.idEtapeNotification}>
+                    {et.ordre}. {et.libelle}
+                    {etapesRealiseesIds.has(et.idEtapeNotification) ? ' ✓' : ''}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Date de réalisation</label>
+              <input
+                type="date"
+                value={dateSuivi}
+                onChange={(e) => setDateSuivi(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Avancement (couleur)</label>
+              <select
+                value={couleurChoisie}
+                onChange={(e) => setCouleurChoisie(e.target.value)}
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              >
+                <option value="">— Aucun —</option>
+                {statutsCouleur.map((sc) => (
+                  <option key={sc.idStatutCouleur} value={sc.idStatutCouleur}>{sc.libelle}</option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Commentaire</label>
+              <textarea
+                rows={2}
+                value={commentaireEtape}
+                onChange={(e) => setCommentaireEtape(e.target.value)}
+                placeholder="Note sur cette étape..."
+                className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+              />
+            </div>
+            <button
+              type="submit"
+              disabled={!etapeChoisie || savingEtape}
+              className="w-full px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-green-300 text-white rounded-lg font-medium text-sm transition-colors"
+            >
+              {savingEtape ? 'Enregistrement...' : "✓ Enregistrer l'étape"}
+            </button>
+            {etapes.length > 0 && etapes.every((et) => etapesRealiseesIds.has(et.idEtapeNotification)) && (
+              <p className="text-xs text-green-600 text-center font-medium">
+                Toutes les étapes du workflow sont réalisées.
+              </p>
+            )}
+          </form>
+        </div>
+
+        {/* Timeline du suivi */}
+        <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-6">
+          <h2 className="text-lg font-bold text-gray-800 mb-4">
+            📈 Suivi de la notification ({suivis.length})
+          </h2>
+          {suivis.length === 0 ? (
+            <p className="text-sm text-gray-400 italic">Aucune étape enregistrée.</p>
+          ) : (
+            <div className="relative pl-4">
+              <div className="absolute left-[7px] top-1 bottom-1 w-0.5 bg-gray-200"></div>
+              <div className="space-y-4">
+                {suivis.map((s) => (
+                  <div key={s.idSuivi} className="relative">
+                    <span
+                      className="absolute -left-4 top-1 w-4 h-4 rounded-full border-2 border-white shadow"
+                      style={{ background: s.couleurStatutCouleurHex || '#d1d5db' }}
+                    ></span>
+                    <div className="group">
+                      <div className="flex items-center justify-between gap-2">
+                        <p className="text-sm font-medium text-gray-800">
+                          {s.libelleEtape || `Suivi n° ${s.ordre ?? '—'} (étape libre)`}
+                        </p>
+                        <button
+                          onClick={() => supprimerSuivi(s.idSuivi)}
+                          title="Retirer du suivi"
+                          className="opacity-0 group-hover:opacity-100 text-red-500 hover:bg-red-50 rounded px-1 text-xs transition-all"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                      <p className="text-xs text-gray-500">
+                        {s.dateSuivi ? fmtDate(s.dateSuivi) : 'Date non renseignée'}
+                        {s.libelleStatutCouleur ? ` · ${s.libelleStatutCouleur}` : ''}
+                        {s.etapeFinale ? ' · étape finale' : ''}
+                      </p>
+                      {s.commentaire && (
+                        <p className="text-xs text-gray-600 mt-1 italic">« {s.commentaire} »</p>
+                      )}
+                      {s.constats && (
+                        <p className="text-xs text-gray-600 mt-1">Constats : {s.constats}</p>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
       </div>
 

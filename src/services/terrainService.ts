@@ -2,6 +2,7 @@ import api from './api';
 import type {
   Ville,
   Propriete,
+  ProprieteType,
   PrixM2,
   Parcelle,
   PageResponse,
@@ -27,6 +28,8 @@ export interface CreateProprieteRequest {
   localisation?: string;
   superficieTotale?: number;
   idLieu?: number;
+  /** Type de propriété (référentiel /api/types-propriete) — obligatoire. */
+  idTypePropriete: number;
 }
 
 export interface UpdateProprieteRequest {
@@ -36,6 +39,8 @@ export interface UpdateProprieteRequest {
   localisation?: string;
   superficieTotale?: number;
   idLieu?: number;
+  /** Type de propriété (référentiel /api/types-propriete) — obligatoire. */
+  idTypePropriete: number;
 }
 
 export interface CreatePrixM2Request {
@@ -120,6 +125,24 @@ export const proprieteService = {
 
   supprimer: (id: number) =>
     api.delete(`/proprietes/${id}`),
+
+  historique: (id: number): Promise<AuditDTO[]> =>
+    api.get<AuditDTO[]>(`/proprietes/${id}/historique`).then((r) => r.data),
+};
+
+// ══════════════════════════════════════════════════════════════
+// Types de propriété (référentiel type_propriete)
+// ══════════════════════════════════════════════════════════════
+
+export const typeProprieteService = {
+  lister: (): Promise<ProprieteType[]> =>
+    api.get<ProprieteType[]>('/types-propriete').then((r) => r.data),
+
+  trouverParId: (id: number): Promise<ProprieteType> =>
+    api.get<ProprieteType>(`/types-propriete/${id}`).then((r) => r.data),
+
+  trouverParDefaut: (): Promise<ProprieteType> =>
+    api.get<ProprieteType>('/types-propriete/par-defaut').then((r) => r.data),
 };
 
 // ══════════════════════════════════════════════════════════════

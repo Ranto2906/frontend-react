@@ -284,17 +284,17 @@ export default function SuiviNotificationsHub() {
           </p>
         </Link>
 
-        {/* Suivi des Notifications */}
+        {/* Config Étapes — workflow des notifications */}
         <Link
-          to="/suivi-notifications/suivi"
+          to="/suivi-notifications/config-etapes"
           className="bg-white rounded-xl shadow-sm border border-gray-200 p-6 hover:shadow-md hover:border-green-300 transition-all group"
         >
-          <div className="text-3xl mb-3">📋</div>
+          <div className="text-3xl mb-3">⚙️</div>
           <h2 className="text-lg font-semibold text-gray-800 group-hover:text-green-600 transition-colors">
-            Suivi des Notifications
+            Config Étapes
           </h2>
           <p className="text-sm text-gray-500 mt-1">
-            Tableau de suivi global de toutes les notifications : statut, historique, relances.
+            Configurer les étapes du workflow des notifications : ordre, libellé, étape finale.
           </p>
         </Link>
 

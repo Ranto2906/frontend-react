@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, Fragment } from 'react';
 import { useNavigate, useParams, Link, useLocation } from 'react-router-dom';
 import { dossierService, prixM2Service, proprieteService } from '../../services';
 import DocumentsDemandeur from './DocumentsDemandeur';
@@ -36,7 +36,7 @@ export default function DetailDemande() {
 
   // Historique des modifications (audit)
   const [historique, setHistorique] = useState<AuditEntry[]>([]);
-  const [historiqueOuvert, setHistoriqueOuvert] = useState(false);
+  const [expandedHistoriqueIdx, setExpandedHistoriqueIdx] = useState<number | null>(0);
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -475,33 +475,105 @@ export default function DetailDemande() {
 
       {/* ── Historique des modifications (audit), en bas de la page ── */}
       <div className="mt-6 bg-white rounded-xl border border-gray-200 shadow-sm p-6">
-        <button
-          type="button"
-          onClick={() => setHistoriqueOuvert((o) => !o)}
-          className="w-full flex items-center justify-between text-left group"
-        >
-          <h2 className="font-semibold text-gray-800 group-hover:text-blue-600 transition-colors">
-            🕘 Historique des modifications
-            {historique.length > 0 && (
-              <span className="ml-2 text-xs font-normal text-gray-400">({historique.length})</span>
-            )}
-          </h2>
-          <span className={`text-gray-400 transition-transform ${historiqueOuvert ? 'rotate-180' : ''}`}>▾</span>
-        </button>
-        {historiqueOuvert && (
-          <div className="mt-4">
-            {historique.length === 0 ? (
-              <p className="text-sm text-gray-400 italic">Aucune modification enregistrée.</p>
-            ) : (
-              <div className="relative pl-4">
-                <div className="absolute left-[7px] top-1 bottom-1 w-0.5 bg-gray-200"></div>
-                <div className="space-y-3">
-                  {historique.map((h) => (
-                    <HistoriqueItem key={h.idAudit} entry={h} />
-                  ))}
-                </div>
-              </div>
-            )}
+        <div className="flex items-center justify-between mb-4">
+          <h2 className="font-semibold text-gray-800">🕘 Historique des modifications</h2>
+          {historique.length > 0 && (
+            <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">
+              {historique.length} modification{historique.length > 1 ? 's' : ''}
+            </span>
+          )}
+        </div>
+
+        {historique.length === 0 ? (
+          <p className="p-8 text-center text-gray-400 text-sm italic">Aucune modification enregistrée.</p>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600 w-8"></th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Action</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Statut</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Type / Ville</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Date demande</th>
+                  <th className="text-left px-4 py-3 font-medium text-gray-600">Quand</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {historique.map((entry, idx) => {
+                  const anciennes = parseJsonSafe(entry.anciennesValeurs);
+                  const nouvelles = parseJsonSafe(entry.nouvellesValeurs);
+                  const resume = anciennes || nouvelles;
+                  const isExpanded = expandedHistoriqueIdx === idx;
+                  const isCreate = entry.action === 'CREATE';
+                  const isDelete = entry.action === 'DELETE' || entry.action === 'SUPPRESSION';
+                  const isUpdate = entry.action === 'UPDATE' || entry.action === 'MODIFICATION';
+
+                  return (
+                    <Fragment key={entry.idAudit}>
+                      <tr className="hover:bg-gray-50 transition-colors">
+                        <td className="px-4 py-3">
+                          <button
+                            type="button"
+                            onClick={() => setExpandedHistoriqueIdx(isExpanded ? null : idx)}
+                            className="p-1 rounded hover:bg-gray-200 transition-colors"
+                            title={isExpanded ? 'Masquer les détails' : 'Voir les détails'}
+                          >
+                            <span className={`w-2.5 h-2.5 rounded-full inline-block ${idx === 0 ? 'bg-blue-500' : 'bg-gray-300'}`} />
+                          </button>
+                        </td>
+                        <td className="px-4 py-3">
+                          <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${
+                            isCreate ? 'bg-green-100 text-green-800'
+                              : isUpdate ? 'bg-blue-100 text-blue-800'
+                              : isDelete ? 'bg-red-100 text-red-800'
+                              : 'bg-gray-100 text-gray-800'
+                          }`}>
+                            {isCreate ? 'Création' : isUpdate ? 'Modification' : isDelete ? 'Suppression' : entry.action || '—'}
+                          </span>
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 text-xs">
+                          {formatAuditValue(resume?.libelleStatut || resume?.statut)}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 text-xs">
+                          {[resume?.typeDossier || resume?.libelleTypeDossier, resume?.ville || resume?.nomVille]
+                            .filter(Boolean).map(formatAuditValue).join(' · ') || '—'}
+                        </td>
+                        <td className="px-4 py-3 text-gray-600 text-xs">
+                          {formatAuditValue(resume?.dateDemande)}
+                        </td>
+                        <td className="px-4 py-3 text-gray-500 text-xs">
+                          {formatAuditDate(entry.dateAction)}
+                        </td>
+                      </tr>
+
+                      {isExpanded && (
+                        <tr>
+                          <td colSpan={6} className="px-6 py-4 bg-gray-50 border-t border-gray-100">
+                            <p className="text-xs text-gray-400 uppercase tracking-wide font-medium mb-3">
+                              {isCreate ? 'Données créées' : isDelete ? 'Données supprimées' : 'Détail de la modification'}
+                              {' '}— {formatAuditDate(entry.dateAction)}
+                            </p>
+                            {(anciennes || nouvelles) && (
+                              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                {anciennes && <AuditValues title="Avant" values={anciennes} />}
+                                {nouvelles && <AuditValues title="Après" values={nouvelles} after={anciennes} />}
+                              </div>
+                            )}
+                            {entry.nomUtilisateur && (
+                              <p className="text-xs text-gray-400 mt-3">
+                                Par <span className="font-medium text-gray-600">{entry.nomUtilisateur}</span>
+                                {entry.ipAdresse && <span className="ml-2">(IP: {entry.ipAdresse})</span>}
+                              </p>
+                            )}
+                          </td>
+                        </tr>
+                      )}
+                    </Fragment>
+                  );
+                })}
+              </tbody>
+            </table>
           </div>
         )}
       </div>
@@ -571,53 +643,59 @@ function parseJsonSafe(s?: string | null): Record<string, unknown> | null {
   }
 }
 
-function HistoriqueItem({ entry }: { entry: AuditEntry }) {
-  const avant = parseJsonSafe(entry.anciennesValeurs);
-  const apres = parseJsonSafe(entry.nouvellesValeurs);
-  const champs = Array.from(new Set([...Object.keys(avant ?? {}), ...Object.keys(apres ?? {})]));
+function formatAuditDate(date?: string | null): string {
+  if (!date) return '—';
+  return new Date(date).toLocaleDateString('fr-FR', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
 
-  const icone =
-    entry.action === 'CREATE' ? '🟢' : entry.action === 'DELETE' ? '🔴' : '🔵';
-  const libelleAction =
-    entry.action === 'CREATE' ? 'Création du dossier'
-    : entry.action === 'DELETE' ? 'Suppression du dossier'
-    : entry.entiteType === 'suivi_dossier' ? 'Étape du suivi'
-    : 'Modification du dossier';
+function formatAuditValue(value: unknown): string {
+  if (value === null || value === undefined || value === '') return '—';
+  if (typeof value === 'string') {
+    if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+      return new Date(`${value}T00:00:00`).toLocaleDateString('fr-FR');
+    }
+    if (/^\d{4}-\d{2}-\d{2}T/.test(value)) return formatAuditDate(value);
+    return value;
+  }
+  if (typeof value === 'number') return value.toLocaleString('fr-FR');
+  return String(value);
+}
 
+function AuditValues({
+  title,
+  values,
+  after,
+}: {
+  title: string;
+  values: Record<string, unknown>;
+  after?: Record<string, unknown> | null;
+}) {
   return (
-    <div className="relative">
-      <span className="absolute -left-4 top-1 w-4 h-4 rounded-full border-2 border-white shadow bg-gray-300 flex items-center justify-center text-[8px]">
-        {icone}
-      </span>
-      <div>
-        <div className="flex items-baseline justify-between gap-2 flex-wrap">
-          <p className="text-sm font-medium text-gray-800">{libelleAction}</p>
-          <p className="text-[10px] text-gray-400">
-            {entry.dateAction ? new Date(entry.dateAction).toLocaleString('fr-FR') : '—'}
-          </p>
-        </div>
-        {entry.nomUtilisateur && (
-          <p className="text-xs text-gray-500">par {entry.nomUtilisateur}</p>
-        )}
-        {champs.length > 0 && (
-          <div className="mt-1.5 space-y-0.5 bg-gray-50 rounded-lg px-3 py-2 border border-gray-100">
-            {champs.map((champ) => {
-              const oldV = avant?.[champ];
-              const newV = apres?.[champ];
-              if (String(oldV ?? '') === String(newV ?? '')) return null; // inchangé
-              return (
-                <p key={champ} className="text-xs text-gray-600">
-                  <span className="font-medium text-gray-700">
-                    {LIBELLES_CHAMPS[champ] ?? champ} :
-                  </span>{' '}
-                  <span className="text-red-600 line-through decoration-red-300">{String(oldV ?? '—')}</span>{' '}
-                  <span className="text-gray-400">→</span>{' '}
-                  <span className="text-green-700 font-medium">{String(newV ?? '—')}</span>
-                </p>
-              );
-            })}
+    <div>
+      <p className={`text-xs font-medium uppercase tracking-wide mb-2 ${title === 'Après' ? 'text-blue-500' : 'text-gray-500'}`}>
+        {title}
+      </p>
+      <div className={`space-y-2 bg-white border rounded-lg p-4 ${title === 'Après' ? 'border-blue-200' : 'border-gray-200'}`}>
+        {Object.keys(values).map((key) => (
+          <div key={key}>
+            <p className="text-[11px] font-medium text-gray-400 uppercase tracking-wide">
+              {LIBELLES_CHAMPS[key] ?? key}
+            </p>
+            <p className={`text-sm break-words whitespace-pre-wrap ${
+              after && JSON.stringify(after[key]) !== JSON.stringify(values[key])
+                ? 'text-blue-700 font-medium'
+                : 'text-gray-800'
+            }`}>
+              {formatAuditValue(values[key])}
+            </p>
           </div>
-        )}
+        ))}
       </div>
     </div>
   );

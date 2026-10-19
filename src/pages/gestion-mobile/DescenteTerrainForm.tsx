@@ -15,7 +15,7 @@ const STATUTS_CONSTAT = [
   'Construction illegale',
 ];
 
-const STATUTS_VALIDATION = ['En attente', 'Valide', 'Rejete', 'Complement demande'];
+const STATUTS_VALIDATION = ['Bon pour la suite', 'En instance'];
 
 const inputCls =
   'w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-amber-500 focus:border-transparent outline-none';
@@ -33,7 +33,7 @@ export default function DescenteTerrainForm() {
   const [dateDescente, setDateDescente] = useState(() => new Date().toISOString().slice(0, 10));
   const [statutConstat, setStatutConstat] = useState('En attente');
   const [mode, setMode] = useState('online');
-  const [validation, setValidation] = useState('En attente');
+  const [validation, setValidation] = useState('En instance');
   const [observation, setObservation] = useState('');
 
   // Rattachement au dossier
@@ -59,7 +59,7 @@ export default function DescenteTerrainForm() {
         setDateDescente(d.dateDescente || '');
         setStatutConstat(d.statutConstat || 'En attente');
         setMode(d.mode || 'online');
-        setValidation(d.validation || 'En attente');
+        setValidation(d.validation || 'En instance');
         setObservation(d.observation || '');
         if (d.idDossierParcelle) {
           setDossierChoisi({
