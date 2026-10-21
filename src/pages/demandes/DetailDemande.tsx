@@ -32,6 +32,7 @@ export default function DetailDemande() {
   const [couleurChoisie, setCouleurChoisie] = useState('');
   const [commentaire, setCommentaire] = useState('');
   const [savingEtape, setSavingEtape] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
   const [etapeSuppression, setEtapeSuppression] = useState<SuiviEtape | null>(null);
 
   // Historique des modifications (audit)
@@ -41,6 +42,28 @@ export default function DetailDemande() {
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 3000);
+  };
+
+  // ── Export PDF officiel de la demande (document A4 généré par le backend) ──
+  const exporterPdf = async () => {
+    if (!dos) return;
+    setExportingPdf(true);
+    try {
+      const blob = await dossierService.exporterPdf(dos.idDossier);
+      const url = URL.createObjectURL(blob);
+      const lien = document.createElement('a');
+      lien.href = url;
+      lien.download = `demande-${dos.numeroDossier}.pdf`;
+      document.body.appendChild(lien);
+      lien.click();
+      lien.remove();
+      URL.revokeObjectURL(url);
+      showToast('Document PDF généré');
+    } catch {
+      showToast("Export PDF impossible", false);
+    } finally {
+      setExportingPdf(false);
+    }
   };
 
   const charger = useCallback(async () => {
@@ -235,6 +258,14 @@ export default function DetailDemande() {
             className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
           >
             ← Retour
+          </button>
+          <button
+            onClick={exporterPdf}
+            disabled={exportingPdf}
+            title="Télécharger la fiche officielle de la demande au format PDF"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 rounded-lg transition-colors"
+          >
+            {exportingPdf ? '⏳ Génération…' : '⬇ PDF'}
           </button>
           <Link
             to={`/demandes/${dos.idDossier}/modifier`}

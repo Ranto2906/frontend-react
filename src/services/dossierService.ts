@@ -112,6 +112,10 @@ export const dossierService = {
   supprimer: (id: number) =>
     api.delete(`/dossiers/${id}`),
 
+  // ── Export PDF officiel de la demande (document A4 généré par le backend) ──
+  exporterPdf: (idDossier: number): Promise<Blob> =>
+    api.get(`/dossiers/${idDossier}/pdf`, { responseType: 'blob' }).then((r) => r.data),
+
   // ── Suivi : changement d'étape ──
   enregistrerEtape: (idDossier: number, request: SuiviEtapeRequest): Promise<SuiviEtape> =>
     api.post<SuiviEtape>(`/dossiers/${idDossier}/suivi`, request).then((r) => r.data),
