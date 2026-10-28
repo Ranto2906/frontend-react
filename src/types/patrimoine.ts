@@ -45,6 +45,25 @@ export interface Propriete {
   updatedAt?: string;
 }
 
+/** Dossier rattaché à une propriété (tableau du détail propriété). */
+export interface DossierLiePropriete {
+  idDossier: number;
+  numeroDossier: string;
+  demandeur?: string;
+  superficieM2?: number;
+}
+
+/** Occupation d'une propriété par les dossiers + superficie restante. */
+export interface ProprieteOccupation {
+  idPropriete: number;
+  superficieTotale?: number;
+  superficieUtilisee: number;
+  superficieRestante?: number;
+  /** false quand le reste vaut 0 : plus aucune demande possible. */
+  disponible: boolean;
+  dossiers: DossierLiePropriete[];
+}
+
 export interface Parcelle {
   idParcelle: string;
   numeroLot?: string;

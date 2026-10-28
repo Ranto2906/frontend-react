@@ -17,6 +17,7 @@ const COUCHES: CoucheCarte[] = [
   { key: 'parcelle',         label: 'Parcelles',              couleur: '#16a34a', forme: 'carre' },
   { key: 'dossier_parcelle', label: 'Parcelles de dossier',   couleur: '#f59e0b', forme: 'carre' },
   { key: 'signalement',      label: 'Signalements',           couleur: '#a13a2c', forme: 'cercle' },
+  { key: 'descente_terrain', label: 'Descentes terrain',      couleur: '#7c3aed', forme: 'cercle' },
 ];
 
 type ModeDessin = 'aucun' | 'point' | 'polygone';
@@ -42,6 +43,11 @@ export default function Carte() {
   const [remplacer, setRemplacer] = useState(false);
   const [panneauCoord, setPanneauCoord] = useState(false);
   const [zoomCible, setZoomCible] = useState<GeometrieCarte | null>(null);
+  const [recherche, setRecherche] = useState('');
+  const [filtreType, setFiltreType] = useState<string>('tous');
+  const [rechercheOuverte, setRechercheOuverte] = useState(false);
+  /** Couches Leaflet par id de géométrie : permet d'ouvrir la popup d'un résultat de recherche. */
+  const layersRef = useRef<Map<string, L.Layer>>(new Map());
 
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
@@ -97,13 +103,14 @@ export default function Carte() {
   useEffect(() => {
     const map = mapRef.current;
     if (!map) return;
+    layersRef.current.clear();
     COUCHES.forEach((c) => {
       const groupe = coucheRefs.current.get(c.key);
       if (!groupe) return;
       groupe.clearLayers();
       geometries
         .filter((g) => coucheDe(g) === c.key)
-        .forEach((g) => ajouterGeometrie(groupe, g, c.couleur, () => setZoomCible(g)));
+        .forEach((g) => ajouterGeometrie(groupe, g, c.couleur, () => setZoomCible(g), layersRef.current));
       if (couchesActives[c.key]) {
         if (!map.hasLayer(groupe)) groupe.addTo(map);
       } else if (map.hasLayer(groupe)) {
@@ -124,6 +131,10 @@ export default function Carte() {
         map.fitBounds(b, { padding: [40, 40], maxZoom: zoomCible.typeGeometrie === 'Point' ? 17 : 18 });
       }
     } catch { /* geojson invalide */ }
+    // Ouvre la popup du résultat de recherche : la popup reste ancrée sur sa
+    // couche et suit le zoom/panoramique de la carte.
+    const layer = layersRef.current.get(zoomCible.idGeometrie);
+    (layer as (L.Layer & { openPopup?: () => void }) | undefined)?.openPopup?.();
     setZoomCible(null);
   }, [zoomCible]);
 
@@ -283,6 +294,27 @@ export default function Carte() {
     return t;
   }, [geometries]);
 
+  // ── Recherche d'entité sur la carte (libellé, type, identifiant, source) ──
+  const resultats = useMemo(() => {
+    const q = normaliserTexte(recherche.trim());
+    if (!q) return [];
+    return geometries.filter((g) => {
+      if (filtreType !== 'tous' && g.entiteType !== filtreType) return false;
+      const fouille = normaliserTexte(
+        [g.libelleEntite ?? '', labelEntite(g.entiteType), idLisible(g.entiteId), g.entiteId, g.source ?? ''].join(' '),
+      );
+      return fouille.includes(q);
+    });
+  }, [geometries, recherche, filtreType]);
+
+  /** Sélection d'un résultat : activation de sa couche si besoin, zoom + popup. */
+  const choisirResultat = (g: GeometrieCarte) => {
+    const couche = coucheDe(g);
+    if (!couchesActives[couche]) setCouchesActives((c) => ({ ...c, [couche]: true }));
+    setRecherche('');
+    setZoomCible(g);
+  };
+
   return (
     <div className="flex-1 overflow-hidden flex flex-col p-6 gap-4">
       {toast && (
@@ -415,6 +447,79 @@ export default function Carte() {
               <div className="text-gray-500 text-sm">Chargement des géométries…</div>
             </div>
           )}
+
+          {/* ── Recherche d'entité (propriété, signalement, descente…) ── */}
+          <div className="absolute top-3 right-3 z-[600] w-80">
+            <select
+              value={filtreType}
+              onChange={(e) => setFiltreType(e.target.value)}
+              className="w-full mb-1.5 px-2 py-1.5 border border-gray-300 bg-white rounded-lg shadow-sm text-xs text-gray-700 focus:outline-none focus:ring-2 focus:ring-blue-500"
+            >
+              <option value="tous">Toutes les entités</option>
+              <option value="propriete">Propriétés</option>
+              <option value="parcelle">Parcelles</option>
+              <option value="dossier_parcelle">Parcelles de dossier</option>
+              <option value="signalement">Signalements</option>
+              <option value="descente_terrain">Descentes terrain</option>
+            </select>
+            <div className="relative">
+              <input
+                value={recherche}
+                onChange={(e) => setRecherche(e.target.value)}
+                onFocus={() => setRechercheOuverte(true)}
+                onBlur={() => window.setTimeout(() => setRechercheOuverte(false), 150)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && resultats.length > 0) choisirResultat(resultats[0]);
+                  if (e.key === 'Escape') setRecherche('');
+                }}
+                placeholder="Rechercher une propriété, un signalement…"
+                aria-label="Rechercher un terrain sur la carte"
+                className="w-full pl-8 pr-8 py-2.5 bg-white border border-gray-300 rounded-lg shadow-sm text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+              />
+              <span className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm pointer-events-none">🔍</span>
+              {recherche && (
+                <button
+                  onClick={() => setRecherche('')}
+                  aria-label="Effacer la recherche"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-base leading-none"
+                >
+                  ×
+                </button>
+              )}
+              {rechercheOuverte && recherche.trim() !== '' && (
+                <div className="absolute left-0 right-0 top-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-64 overflow-y-auto">
+                  {resultats.length === 0 ? (
+                    <div className="px-3 py-2.5 text-xs text-gray-500">
+                      Aucun résultat pour « {recherche.trim()} »
+                    </div>
+                  ) : (
+                    resultats.map((g) => (
+                      <button
+                        key={g.idGeometrie}
+                        onMouseDown={(e) => e.preventDefault()}
+                        onClick={() => choisirResultat(g)}
+                        className="w-full flex items-center gap-2 px-3 py-2 text-left hover:bg-blue-50 border-b border-gray-100 last:border-0"
+                      >
+                        <span
+                          className="w-2.5 h-2.5 rounded-full shrink-0"
+                          style={{ background: COUCHES.find((c) => c.key === coucheDe(g))?.couleur ?? '#64748b' }}
+                        />
+                        <span className="min-w-0 flex-1">
+                          <span className="block text-xs font-medium text-gray-800 truncate">
+                            {g.libelleEntite || idLisible(g.entiteId)}
+                          </span>
+                          <span className="block text-[11px] text-gray-500 truncate">
+                            {labelEntite(g.entiteType)}
+                            {g.superficieCalculeeM2 != null ? ` · ${formatM2(g.superficieCalculeeM2)}` : ''}
+                          </span>
+                        </span>
+                      </button>
+                    ))
+                  )}
+                </div>
+              )}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -598,16 +703,27 @@ function ajouterGeometrie(
   g: GeometrieCarte,
   couleur: string,
   onZoom: (g: GeometrieCarte) => void,
+  registre?: Map<string, L.Layer>,
 ) {
   let parsed: GeoJSON.GeoJsonObject;
   try { parsed = JSON.parse(g.geojson); } catch { return; }
 
   const coords = coordonneesDe(parsed);
   const couche = L.geoJSON(parsed, {
-    style: { color: couleur, weight: 2, fillOpacity: 0.15 },
+    // Les polygones (surfaces de terrain) dominent visuellement : contour
+    // épais + remplissage marqué. Attention : L.geoJSON applique `style` à
+    // toutes les couches Path, y compris les circleMarkers — on renvoie donc
+    // un style vide pour les Points afin de garder leur propre rendu.
+    style: (feature) =>
+      feature?.geometry?.type === 'Point'
+        ? {}
+        : { color: couleur, weight: 3, fillOpacity: 0.30, fillColor: couleur },
+    // Points volontairement compacts (petit disque teinté + liseré blanc) :
+    // repérables sans écraser les polygones (rayon 5 px au lieu de 7).
     pointToLayer: (_f, latlng) =>
-      L.circleMarker(latlng, { radius: 7, color: couleur, fillColor: couleur, fillOpacity: 0.85, weight: 1.5 }),
+      L.circleMarker(latlng, { radius: 5, color: '#ffffff', fillColor: couleur, fillOpacity: 0.95, weight: 2 }),
     onEachFeature: (_f, layer) => {
+      registre?.set(g.idGeometrie, layer);
       layer.bindPopup(popupDetailHtml(g, couleur, coords), {
         minWidth: 250,
         maxWidth: 320,
@@ -851,6 +967,11 @@ function labelEntite(entiteType: string): string {
     signalement: 'Signalement',
     descente_terrain: 'Descente terrain',
   } as Record<string, string>)[entiteType] ?? entiteType;
+}
+
+/** Normalise un texte pour la recherche (insensible casse + accents). */
+function normaliserTexte(s: string): string {
+  return s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
 /** Échappe le HTML d'un texte inséré dans une popup. */

@@ -125,10 +125,16 @@ export default function DetailDemande() {
 
   useEffect(() => { charger(); }, [charger]);
 
-  // ── Montant calculé d'une parcelle demandée : superficie × prix au m² de la ville ──
+  // ── Prix retenu : prix au m² FIGÉ sur le dossier (à son enregistrement) ;
+  //    repli sur le prix courant uniquement pour les dossiers hérités sans snapshot.
+  //    Modifier le prix du référentiel ne change donc jamais les anciens dossiers. ──
+  const prixRetenuTtc = dos?.prixM2Ttc != null ? Number(dos.prixM2Ttc) : prixVille?.prixTtc ?? null;
+  const prixRetenuHt = dos?.prixM2Ht != null ? Number(dos.prixM2Ht) : prixVille?.prixHt ?? null;
+
+  // ── Montant calculé d'une parcelle demandée : superficie × prix au m² retenu ──
   const montantParcelle = (p: ParcelleDemandee, ttc: boolean): number | null => {
-    if (p.superficieM2 == null || !prixVille) return null;
-    const prix = ttc ? prixVille.prixTtc : prixVille.prixHt;
+    if (p.superficieM2 == null) return null;
+    const prix = ttc ? prixRetenuTtc : prixRetenuHt;
     if (prix == null) return null;
     return Number(p.superficieM2) * Number(prix);
   };
@@ -141,7 +147,7 @@ export default function DetailDemande() {
     if (details.some((m) => m == null)) return null;
     return details.reduce<number>((sum, amount) => sum + (amount ?? 0), 0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [dos, prixVille]);
+  }, [dos, prixVille, prixRetenuTtc]);
 
   const formatAr = (n: number) =>
     n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -291,6 +297,12 @@ export default function DetailDemande() {
               <Info label="Transmission" value={dos.transmission} />
               <Info label="Dossier fournie" value={dos.libelleDossierFournie} />
               <Info label="Montant total" value={dos.montantTotal != null ? `${dos.montantTotal} Ar` : null} />
+              <Info
+                label="Prix au m² retenu"
+                value={dos.prixM2Ttc != null
+                  ? `${Number(dos.prixM2Ttc).toLocaleString('fr-FR')} Ar TTC${dos.prixM2Ht != null ? ` / ${Number(dos.prixM2Ht).toLocaleString('fr-FR')} Ar HT` : ''}`
+                  : null}
+              />
               <Info label="Résultat de l'étude" value={dos.resultatEtude} />
               <Info label="Créé le" value={formatDate(dos.dateCreation ?? null)} />
             </div>
@@ -338,7 +350,10 @@ export default function DetailDemande() {
             )}
             {totalTtcCalcule != null && dos.parcelles && dos.parcelles.length > 0 && (
               <p className="text-sm text-right mt-3 pt-3 border-t border-gray-100">
-                <span className="text-gray-500">Montant total (calculé) : </span>
+                <span className="text-gray-500">
+                  Montant total (calculé) au prix de {formatAr(prixRetenuTtc ?? 0)} Ar/m²
+                  {dos.prixM2Ttc != null ? " — prix figé à l'enregistrement" : ''} :{' '}
+                </span>
                 <strong className="text-blue-700">{formatAr(totalTtcCalcule)} Ar</strong>
               </p>
             )}

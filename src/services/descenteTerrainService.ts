@@ -2,6 +2,7 @@ import api from './api';
 import type {
   DescenteTerrainDTO,
   DescenteTerrainRequest,
+  DescenteStatutHistorique,
   DossierDescenteResult,
   StatistiquesDescente,
   PageResponse,
@@ -35,10 +36,19 @@ export const descenteTerrainService = {
   statistiques: (): Promise<StatistiquesDescente> =>
     api.get<StatistiquesDescente>('/descentes-terrain/stats').then((r) => r.data),
 
+  /** Historique des changements de statut (constat + validation), ordre chronologique. */
+  historiqueStatuts: (id: string): Promise<DescenteStatutHistorique[]> =>
+    api.get<DescenteStatutHistorique[]>(`/descentes-terrain/${id}/historique-statuts`)
+      .then((r) => r.data),
+
   /** Recherche de dossiers pour rattacher une descente (autocomplete). */
   rechercherDossiers: (q: string): Promise<DossierDescenteResult[]> =>
     api.get<DossierDescenteResult[]>('/descentes-terrain/dossiers/search', { params: { q } })
       .then((r) => r.data),
+
+  /** Fiche PDF de la descente (constat + photos, signature agent). */
+  exporterPdf: (id: string): Promise<Blob> =>
+    api.get(`/descentes-terrain/${id}/pdf`, { responseType: 'blob' }).then((r) => r.data),
 };
 
 export default descenteTerrainService;

@@ -2,14 +2,16 @@ import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
 import { descenteTerrainService } from '../../services';
 import PhotosSection from '../suivi-notifications/PhotosSection';
-import type { DescenteTerrainDTO, DescenteTerrainRequest } from '../../types';
+import type {
+  DescenteTerrainDTO,
+  DescenteTerrainRequest,
+  DescenteStatutHistorique,
+} from '../../types';
 
 const COULEURS_CONSTAT: Record<string, string> = {
-  conforme: '#059669',
-  'non conforme': '#dc2626',
-  'en attente': '#b7791f',
-  'occupation illicite': '#7c3aed',
-  'construction illegale': '#e11d48',
+  faisable: '#059669',
+  'non faisable': '#dc2626',
+  'sous réserve': '#b7791f',
 };
 
 const COULEURS_VALIDATION: Record<string, string> = {
@@ -59,15 +61,27 @@ export default function DetailDescenteTerrain() {
   const [erreur, setErreur] = useState('');
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
   const [confirmSuppression, setConfirmSuppression] = useState(false);
+  const [exportingPdf, setExportingPdf] = useState(false);
 
   // Validation
   const [validationChoisie, setValidationChoisie] = useState('');
   const [savingValidation, setSavingValidation] = useState(false);
 
+  // Historique des changements de statut (constat + validation)
+  const [historiqueStatuts, setHistoriqueStatuts] = useState<DescenteStatutHistorique[]>([]);
+
   const showToast = (msg: string, ok = true) => {
     setToast({ msg, ok });
     setTimeout(() => setToast(null), 3000);
   };
+
+  /** Historique des statuts — échec silencieux (section secondaire). */
+  const chargerHistorique = useCallback(() => {
+    if (!id) return;
+    descenteTerrainService.historiqueStatuts(id)
+      .then(setHistoriqueStatuts)
+      .catch(() => setHistoriqueStatuts([]));
+  }, [id]);
 
   const load = useCallback(async () => {
     if (!id) return;
@@ -77,12 +91,13 @@ export default function DetailDescenteTerrain() {
       setDt(d);
       setValidationChoisie(d.validation || 'En instance');
       setErreur('');
+      chargerHistorique();
     } catch {
       setErreur('Descente introuvable.');
     } finally {
       setLoading(false);
     }
-  }, [id]);
+  }, [id, chargerHistorique]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -92,6 +107,25 @@ export default function DetailDescenteTerrain() {
     if (st?.toast) showToast(st.toast.msg, st.toast.ok ?? true);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
+
+  // ── Export PDF de la fiche de descente (constat + photos) ──
+  const exporterPdf = async () => {
+    if (!dt) return;
+    setExportingPdf(true);
+    try {
+      const blob = await descenteTerrainService.exporterPdf(dt.idDescente);
+      const url = URL.createObjectURL(blob);
+      const lien = document.createElement('a');
+      lien.href = url;
+      lien.download = `descente-${dt.reference || dt.idDescente}.pdf`;
+      lien.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      showToast('Export PDF impossible', false);
+    } finally {
+      setExportingPdf(false);
+    }
+  };
 
   // ── Validation ──
   const handleValidation = async () => {
@@ -111,6 +145,7 @@ export default function DetailDescenteTerrain() {
       const maj = await descenteTerrainService.modifier(dt.idDescente, payload);
       setDt(maj);
       setValidationChoisie(maj.validation || validationChoisie);
+      chargerHistorique();
       showToast(`Validation enregistrée : ${maj.validation}`);
     } catch {
       showToast('Erreur lors de la validation', false);
@@ -209,6 +244,14 @@ export default function DetailDescenteTerrain() {
           >
             ← Liste
           </Link>
+          <button
+            onClick={exporterPdf}
+            disabled={exportingPdf}
+            title="Télécharger la fiche de descente au format PDF"
+            className="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 hover:bg-gray-50 disabled:opacity-50 rounded-lg transition-colors"
+          >
+            {exportingPdf ? '⏳ Génération…' : '⬇ PDF'}
+          </button>
           <Link
             to={`/descentes-terrain/${dt.idDescente}/modifier`}
             className="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg font-medium text-sm transition-colors"
@@ -453,6 +496,65 @@ export default function DetailDescenteTerrain() {
               </dl>
             ) : (
               <p className="text-sm text-gray-400">Aucun demandeur rattaché.</p>
+            )}
+          </div>
+
+          {/* ── Historique des changements de statut ── */}
+          <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-5">
+            <div className="flex items-center justify-between mb-3">
+              <h2 className="text-sm font-semibold text-gray-700">🕘 Historique des statuts</h2>
+              {historiqueStatuts.length > 0 && (
+                <span className="text-xs text-gray-400">
+                  {historiqueStatuts.length} changement{historiqueStatuts.length > 1 ? 's' : ''}
+                </span>
+              )}
+            </div>
+
+            {historiqueStatuts.length === 0 ? (
+              <p className="text-sm text-gray-400">Aucun changement de statut enregistré.</p>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-sm">
+                  <thead>
+                    <tr className="text-xs text-gray-400 border-b border-gray-100">
+                      <th className="text-left font-medium py-1.5 pr-3">Date de modification</th>
+                      <th className="text-left font-medium py-1.5 pr-3">Statut</th>
+                      <th className="text-left font-medium py-1.5">Par</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {historiqueStatuts.map((h, i) => (
+                      <tr key={`${h.champ}-${h.dateModification}-${i}`} className="border-b border-gray-50 last:border-0">
+                        <td className="py-2 pr-3 text-xs text-gray-500 whitespace-nowrap align-top">
+                          {formatDateTime(h.dateModification)}
+                        </td>
+                        <td className="py-2 pr-3 align-top">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-[11px] text-gray-400">{h.libelleChamp}</span>
+                            <span
+                              className="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium text-white"
+                              style={{
+                                background: couleur(
+                                  h.champ === 'validation' ? COULEURS_VALIDATION : COULEURS_CONSTAT,
+                                  h.nouveauStatut,
+                                ),
+                              }}
+                            >
+                              {h.nouveauStatut}
+                            </span>
+                            {h.ancienStatut && (
+                              <span className="text-[11px] text-gray-400">← {h.ancienStatut}</span>
+                            )}
+                          </div>
+                        </td>
+                        <td className="py-2 text-xs text-gray-600 align-top">
+                          {h.nomUtilisateur || '—'}
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </div>

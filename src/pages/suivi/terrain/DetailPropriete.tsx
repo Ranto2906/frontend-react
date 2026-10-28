@@ -1,7 +1,7 @@
 import { useEffect, useState, Fragment } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import { parcelleService, prixM2Service, proprieteService } from '../../../services';
-import type { Parcelle, PrixM2, Propriete, AuditDTO } from '../../../types';
+import type { Parcelle, PrixM2, Propriete, ProprieteOccupation, AuditDTO } from '../../../types';
 
 const formatNumber = (value?: number) => value != null ? value.toLocaleString('fr-FR', { maximumFractionDigits: 2 }) : '—';
 const formatPrice = (value?: number) => value != null ? `${value.toLocaleString('fr-FR')} Ar` : '—';
@@ -12,6 +12,7 @@ export default function DetailPropriete() {
   const [parcelles, setParcelles] = useState<Parcelle[]>([]);
   const [prixM2, setPrixM2] = useState<PrixM2 | null>(null);
   const [historique, setHistorique] = useState<AuditDTO[]>([]);
+  const [occupation, setOccupation] = useState<ProprieteOccupation | null>(null);
   const [expandedHist, setExpandedHist] = useState<number | null>(0);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -22,10 +23,11 @@ export default function DetailPropriete() {
     const loadData = async () => {
       try {
         const property = await proprieteService.trouverParId(Number(id));
-        const [propertyParcelles, cityPrices, history] = await Promise.all([
+        const [propertyParcelles, cityPrices, history, dossiers] = await Promise.all([
           parcelleService.listerParPropriete(property.idPropriete),
           property.idVille ? prixM2Service.listerParVille(property.idVille) : Promise.resolve([]),
           proprieteService.historique(property.idPropriete),
+          proprieteService.dossiers(property.idPropriete).catch(() => null),
         ]);
 
         const latestPrice = cityPrices
@@ -36,6 +38,7 @@ export default function DetailPropriete() {
         setParcelles(propertyParcelles);
         setPrixM2(latestPrice);
         setHistorique(history);
+        setOccupation(dossiers);
       } catch {
         setError('Propriété introuvable');
       } finally {
@@ -74,6 +77,13 @@ export default function DetailPropriete() {
     ? propriete.superficieTotale * prixM2.prixTtc
     : undefined;
 
+  // ── Superficie restante : si le reste vaut 0, plus aucune demande possible ──
+  const dossiersLies = occupation?.dossiers ?? [];
+  const superficieRestante = occupation?.superficieRestante;
+  const superficieRenseignee = occupation?.superficieTotale != null;
+  const superficieLibre = !superficieRenseignee
+    || (superficieRestante != null && superficieRestante > 0);
+
   return (
     <div className="flex-1 overflow-y-auto p-6">
       <div className="flex items-center gap-2 mb-6 text-sm">
@@ -99,7 +109,7 @@ export default function DetailPropriete() {
         </Link>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-6">
         <div className="bg-orange-50 border border-orange-100 rounded-xl p-5">
           <p className="text-sm font-medium text-orange-700">Superficie totale</p>
           <p className="text-3xl font-bold text-gray-800 mt-2">{formatNumber(propriete.superficieTotale)} <span className="text-base font-medium text-gray-500">m²</span></p>
@@ -117,6 +127,19 @@ export default function DetailPropriete() {
           <p className="text-3xl font-bold text-gray-800 mt-2">{formatPrice(totalPrice)}</p>
           <p className="text-xs text-gray-500 mt-2">Superficie × prix au m²</p>
         </div>
+        <div className={`${superficieLibre ? 'bg-emerald-50 border-emerald-100' : 'bg-red-50 border-red-200'} border rounded-xl p-5`}>
+          <p className={`text-sm font-medium ${superficieLibre ? 'text-emerald-700' : 'text-red-700'}`}>Superficie restante</p>
+          <p className="text-3xl font-bold text-gray-800 mt-2">
+            {superficieRenseignee ? formatNumber(superficieRestante) : '—'} <span className="text-base font-medium text-gray-500">m²</span>
+          </p>
+          <p className={`text-xs mt-2 ${superficieLibre ? 'text-gray-500' : 'text-red-600 font-medium'}`}>
+            {!superficieRenseignee
+              ? 'Superficie totale non renseignée — aucune limite de demande'
+              : superficieLibre
+                ? 'Superficie libre pour de nouvelles demandes'
+                : '⛔ Aucune superficie libre : plus de demande possible'}
+          </p>
+        </div>
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 mb-6 overflow-hidden">
@@ -131,6 +154,75 @@ export default function DetailPropriete() {
           <Info label="Lieu" value={propriete.libelleLieu} />
           <Info label="Ville" value={propriete.nomVille || (propriete.idVille ? `Ville #${propriete.idVille}` : undefined)} />
         </div>
+      </div>
+
+      {/* ── Dossiers liés + superficie restante ── */}
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden mb-6">
+        <div className="px-6 py-4 border-b border-gray-200 flex items-center gap-2">
+          <h2 className="text-lg font-bold text-gray-800">📂 Dossiers liés à cette propriété</h2>
+          <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full font-medium">
+            {dossiersLies.length}
+          </span>
+          <span className={`ml-auto text-xs px-2.5 py-1 rounded-full font-medium ${
+            superficieLibre ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700'
+          }`}>
+            Reste : {superficieRenseignee ? `${formatNumber(superficieRestante)} m²` : '—'}
+          </span>
+        </div>
+
+        {dossiersLies.length === 0 ? (
+          <div className="p-10 text-center text-gray-400 text-sm">
+            Aucun dossier n'est encore rattaché à cette propriété.
+          </div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-left px-6 py-3 font-medium text-gray-600">N° dossier</th>
+                  <th className="text-left px-6 py-3 font-medium text-gray-600">Demandeur</th>
+                  <th className="text-right px-6 py-3 font-medium text-gray-600">Superficie</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-100">
+                {dossiersLies.map((d) => (
+                  <tr key={d.idDossier} className="hover:bg-gray-50 transition-colors">
+                    <td className="px-6 py-3">
+                      <Link to={`/demandes/${d.idDossier}`} className="font-medium text-blue-600 hover:text-blue-700">
+                        {d.numeroDossier}
+                      </Link>
+                    </td>
+                    <td className="px-6 py-3 text-gray-700">{d.demandeur || '—'}</td>
+                    <td className="px-6 py-3 text-right text-gray-700">
+                      {d.superficieM2 != null ? `${formatNumber(d.superficieM2)} m²` : '—'}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+              <tfoot>
+                <tr className="bg-gray-50 border-t border-gray-200">
+                  <td colSpan={2} className="px-6 py-3 font-medium text-gray-700">Total superficie occupée</td>
+                  <td className="px-6 py-3 text-right font-semibold text-gray-800">
+                    {formatNumber(occupation?.superficieUtilisee)} m²
+                  </td>
+                </tr>
+                <tr className={`${superficieLibre ? 'bg-emerald-50' : 'bg-red-50'} border-t border-gray-200`}>
+                  <td colSpan={2} className={`px-6 py-3 font-medium ${superficieLibre ? 'text-emerald-700' : 'text-red-700'}`}>
+                    Superficie restante
+                  </td>
+                  <td className={`px-6 py-3 text-right font-bold ${superficieLibre ? 'text-emerald-700' : 'text-red-700'}`}>
+                    {superficieRenseignee ? `${formatNumber(superficieRestante)} m²` : '—'}
+                  </td>
+                </tr>
+              </tfoot>
+            </table>
+            {!superficieLibre && (
+              <p className="px-6 py-3 bg-red-50 border-t border-red-100 text-red-700 text-xs font-medium">
+                ⛔ Cette propriété n'a plus de superficie libre : aucune nouvelle demande ne peut y être rattachée.
+              </p>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">

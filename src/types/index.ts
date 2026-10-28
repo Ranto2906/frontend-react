@@ -38,6 +38,8 @@ export type {
   Lieu,
   Propriete,
   ProprieteType,
+  ProprieteOccupation,
+  DossierLiePropriete,
   Parcelle,
 } from './patrimoine';
 
@@ -98,6 +100,7 @@ export type {
   DescenteTerrainDTO,
   DescenteTerrainRequest,
   DossierDescenteResult,
+  DescenteStatutHistorique,
   StatutConstatDescente,
   StatutValidationDescente,
   StatistiquesDescente,

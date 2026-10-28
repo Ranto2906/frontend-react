@@ -8,6 +8,7 @@ import type {
   Ville,
   StatutDossier,
   Propriete,
+  ProprieteOccupation,
   Parcelle,
   DemandeDossierDemandeurRequest,
   ParcelleDemandeeRequest,
@@ -101,7 +102,11 @@ export default function DemandeForm() {
   const [proprietes, setProprietes] = useState<Propriete[]>([]);
   const [proprietesDuDossier, setProprietesDuDossier] = useState<Propriete[]>([]);
   const [parcellesParPropriete, setParcellesParPropriete] = useState<Record<number, Parcelle[]>>({});
+  // Occupation des propriétés (superficie restante) — mémorisée par id
+  const [occupations, setOccupations] = useState<Record<number, ProprieteOccupation>>({});
   const [prixVille, setPrixVille] = useState<{ prixTtc: number; dateMaj?: string } | null>(null);
+  // En édition : prix au m² FIGÉ sur le dossier (figé à son enregistrement)
+  const [prixDossier, setPrixDossier] = useState<{ prixTtc: number; prixHt?: number } | null>(null);
   const [recherchePropriete, setRecherchePropriete] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -181,6 +186,10 @@ export default function DemandeForm() {
         setIdTypeDossier(d.idTypeDossier != null ? String(d.idTypeDossier) : '');
         setDossierFournieTexte(d.libelleDossierFournie ?? '');
         setIdVille(String(d.idVille));
+        // Prix figé sur le dossier : les calculs l'utilisent en priorité
+        setPrixDossier(d.prixM2Ttc != null
+          ? { prixTtc: Number(d.prixM2Ttc), prixHt: d.prixM2Ht != null ? Number(d.prixM2Ht) : undefined }
+          : null);
         setModeLieu('existant');
         setProprietesDuDossier(
           [...new Map(
@@ -380,17 +389,39 @@ export default function DemandeForm() {
     }
   };
 
-  // Calcul automatique du montant TTC : superficie × prix au m² de la ville
+  // Superficie restante de la propriété (exclut le dossier en cours d'édition)
+  const chargerOccupation = (idPropriete: number) => {
+    proprieteService.dossiers(idPropriete, edition ? Number(id) : undefined)
+      .then((o) => setOccupations((prev) => (prev[idPropriete] ? prev : { ...prev, [idPropriete]: o })))
+      .catch(() => { /* indisponible : la vérification finale reste côté serveur */ });
+  };
+
+  // Charge l'occupation de toutes les propriétés présentes dans les lignes
+  const idsProprietesLignes = [...new Set(
+    parcelleLignes.map((li) => li.idPropriete).filter((x): x is number => x != null),
+  )].join(',');
+  useEffect(() => {
+    idsProprietesLignes
+      .split(',')
+      .filter(Boolean)
+      .forEach((idp) => chargerOccupation(Number(idp)));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [idsProprietesLignes]);
+
+  // Prix appliqué : prix figé sur le dossier en édition, sinon prix en vigueur
+  const prixApplique = prixDossier ?? prixVille;
+
+  // Calcul automatique du montant TTC : superficie × prix au m² retenu
   const totaux = useMemo(() => {
     let totalTtc = 0;
     const detail = parcelleLignes.map((li) => {
       const superficie = Number(li.superficieM2) || 0;
-      const ttc = prixVille ? superficie * (Number(prixVille.prixTtc) || 0) : 0;
+      const ttc = prixApplique ? superficie * (Number(prixApplique.prixTtc) || 0) : 0;
       totalTtc += ttc;
       return { ttc };
     });
     return { totalTtc, detail };
-  }, [parcelleLignes, prixVille]);
+  }, [parcelleLignes, prixApplique]);
 
   const formatAr = (n: number) =>
     n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -452,10 +483,16 @@ export default function DemandeForm() {
     setLignes((l) => (l.length > 1 ? l.filter((li) => li.cle !== cle) : l));
   };
 
+  // Propriétés sélectionnées saturées (superficie restante = 0) : demande bloquée
+  const proprietesSaturees = parcelleLignes
+    .map((li) => (li.idPropriete != null ? occupations[li.idPropriete] : undefined))
+    .filter((o): o is ProprieteOccupation => o != null && !o.disponible);
+
   const peutSoumettre = useMemo(
     () => numeroDossier.trim() && idVille && lieu.trim()
-      && lignes.some((li) => li.idPersonne || li.nom.trim()),
-    [numeroDossier, idVille, lieu, lignes],
+      && lignes.some((li) => li.idPersonne || li.nom.trim())
+      && proprietesSaturees.length === 0,
+    [numeroDossier, idVille, lieu, lignes, proprietesSaturees],
   );
 
   const soumettre = async (e: React.FormEvent) => {
@@ -768,11 +805,20 @@ export default function DemandeForm() {
             <span className="text-xs text-gray-400">{parcelleLignes.length} ligne(s)</span>
           </div>
           <p className="text-xs text-gray-400 mb-4">
-            Le montant TTC est calculé selon le prix au m² de la ville
-            {prixVille
+            {prixDossier
+              ? `Le montant TTC utilise le prix figé sur ce dossier : ${formatAr(prixDossier.prixTtc)} Ar TTC/m² — il ne sera pas recalculé si le prix du référentiel change.`
+              : `Le montant TTC est calculé selon le prix au m² de la ville
+            ${prixVille
               ? ` — prix actuel : ${formatAr(Number(prixVille.prixTtc))} Ar TTC/m²${prixVille.dateMaj ? ` (maj ${new Date(prixVille.dateMaj).toLocaleDateString('fr-FR')})` : ''}`
-              : ' — aucun prix défini pour cette ville'}.
+              : ' — aucun prix défini pour cette ville'}.`}
           </p>
+
+          {proprietesSaturees.length > 0 && (
+            <div className="mb-3 px-3 py-2 bg-red-50 border border-red-200 rounded-lg text-xs text-red-700 font-medium">
+              ⛔ Une ou plusieurs propriétés sélectionnées n'ont plus de superficie libre :
+              retirez-les pour pouvoir créer la demande.
+            </div>
+          )}
 
           {parcelleLignes.length === 0 && (
             <p className="text-sm text-gray-400 italic mb-2">Aucune parcelle demandée.</p>
@@ -803,7 +849,10 @@ export default function DemandeForm() {
                         onChange={(e) => {
                           const v = e.target.value;
                           majParcelleLigne(li.cle, { idPropriete: v ? Number(v) : undefined, idParcelle: undefined });
-                          if (v) chargerParcelles(Number(v));
+                          if (v) {
+                            chargerParcelles(Number(v));
+                            chargerOccupation(Number(v));
+                          }
                         }}
                         className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
                       >
@@ -814,6 +863,22 @@ export default function DemandeForm() {
                           </option>
                         ))}
                       </select>
+                      {li.idPropriete && occupations[li.idPropriete] && (
+                        occupations[li.idPropriete].disponible ? (
+                          <p className="text-[11px] text-gray-500 mt-1">
+                            Superficie restante :{' '}
+                            <strong>
+                              {occupations[li.idPropriete].superficieRestante != null
+                                ? `${occupations[li.idPropriete].superficieRestante!.toLocaleString('fr-FR', { maximumFractionDigits: 2 })} m²`
+                                : '—'}
+                            </strong>
+                          </p>
+                        ) : (
+                          <p className="text-[11px] text-red-600 font-medium mt-1">
+                            ⛔ Plus de superficie libre (0 m²) — impossible d'ajouter une demande sur cette propriété
+                          </p>
+                        )
+                      )}
                     </div>
                     <div>
                       <label className="block text-xs font-medium text-gray-500 mb-1">Parcelle (lot)</label>

@@ -3,6 +3,7 @@ import type {
   Ville,
   Propriete,
   ProprieteType,
+  ProprieteOccupation,
   PrixM2,
   Parcelle,
   PageResponse,
@@ -128,6 +129,15 @@ export const proprieteService = {
 
   historique: (id: number): Promise<AuditDTO[]> =>
     api.get<AuditDTO[]>(`/proprietes/${id}/historique`).then((r) => r.data),
+
+  /**
+   * Dossiers rattachés à une propriété + superficie restante.
+   * `exclureDossier` (édition) permet de ne pas compter le dossier en cours.
+   */
+  dossiers: (id: number, exclureDossier?: number): Promise<ProprieteOccupation> =>
+    api.get<ProprieteOccupation>(`/proprietes/${id}/dossiers`, {
+      params: exclureDossier != null ? { exclureDossier } : undefined,
+    }).then((r) => r.data),
 };
 
 // ══════════════════════════════════════════════════════════════

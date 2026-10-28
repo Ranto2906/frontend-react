@@ -3,13 +3,15 @@
 // (com.seimad.patrimoine.dto.descente.*)
 // ══════════════════════════════════════════════════════════════
 
-/** Statuts de constat relevés sur le terrain (valeurs du mobile). */
+/**
+ * Statuts de constat relevés sur le terrain (valeurs du mobile).
+ * Référentiel V38 : les anciens constats (Conforme / Non conforme /
+ * En attente / Occupation illicite / Construction illegale) sont retirés.
+ */
 export type StatutConstatDescente =
-  | 'Conforme'
-  | 'Non conforme'
-  | 'En attente'
-  | 'Occupation illicite'
-  | 'Construction illegale';
+  | 'Faisable'
+  | 'Non faisable'
+  | 'Sous réserve';
 
 /** États de validation de la descente par l'administration. */
 export type StatutValidationDescente =
@@ -17,11 +19,9 @@ export type StatutValidationDescente =
   | 'En instance';
 
 export const STATUTS_CONSTAT: StatutConstatDescente[] = [
-  'Conforme',
-  'Non conforme',
-  'En attente',
-  'Occupation illicite',
-  'Construction illegale',
+  'Faisable',
+  'Non faisable',
+  'Sous réserve',
 ];
 
 export const STATUTS_VALIDATION: StatutValidationDescente[] = [
@@ -112,6 +112,23 @@ export interface DossierDescenteResult {
   demandeurId?: number;
   demandeurNom?: string;
   demandeurContact?: string;
+}
+
+/**
+ * Un changement de statut — GET /api/descentes-terrain/{id}/historique-statuts.
+ * `ancienStatut` est absent sur l'état initial (création de la descente).
+ */
+export interface DescenteStatutHistorique {
+  /** 'statutConstat' (constat sur le terrain) ou 'validation' (administrative). */
+  champ: 'statutConstat' | 'validation' | string;
+  /** Libellé français : « Statut du constat » / « Validation ». */
+  libelleChamp: string;
+  ancienStatut?: string | null;
+  nouveauStatut: string;
+  /** Date de modification (ISO). */
+  dateModification?: string;
+  action?: string;
+  nomUtilisateur?: string;
 }
 
 /** GET /api/descentes-terrain/stats. */

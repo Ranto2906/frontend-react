@@ -113,6 +113,9 @@ export interface DemandeDossier {
   dateModification?: string;
   dateValidation?: string | null;
   montantTotal?: string | number | null;
+  // Prix au m² figé à l'enregistrement du dossier (snapshot)
+  prixM2Ttc?: number | string | null;
+  prixM2Ht?: number | string | null;
   // Statut
   idStatutDossier?: number | null;
   codeStatut?: string | null;

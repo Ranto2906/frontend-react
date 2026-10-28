@@ -7,13 +7,7 @@ import type {
   DossierDescenteResult,
 } from '../../types';
 
-const STATUTS_CONSTAT = [
-  'Conforme',
-  'Non conforme',
-  'En attente',
-  'Occupation illicite',
-  'Construction illegale',
-];
+const STATUTS_CONSTAT = ['Faisable', 'Non faisable', 'Sous réserve'];
 
 const STATUTS_VALIDATION = ['Bon pour la suite', 'En instance'];
 
@@ -31,7 +25,7 @@ export default function DescenteTerrainForm() {
   const estModification = Boolean(id);
 
   const [dateDescente, setDateDescente] = useState(() => new Date().toISOString().slice(0, 10));
-  const [statutConstat, setStatutConstat] = useState('En attente');
+  const [statutConstat, setStatutConstat] = useState('Faisable');
   const [mode, setMode] = useState('online');
   const [validation, setValidation] = useState('En instance');
   const [observation, setObservation] = useState('');
@@ -57,7 +51,7 @@ export default function DescenteTerrainForm() {
         const d: DescenteTerrainDTO = await descenteTerrainService.trouverParId(id);
         if (!actif) return;
         setDateDescente(d.dateDescente || '');
-        setStatutConstat(d.statutConstat || 'En attente');
+        setStatutConstat(d.statutConstat || 'Faisable');
         setMode(d.mode || 'online');
         setValidation(d.validation || 'En instance');
         setObservation(d.observation || '');

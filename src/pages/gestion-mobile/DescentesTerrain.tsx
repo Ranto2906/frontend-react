@@ -12,11 +12,9 @@ function estNonLiee(d: DescenteTerrainDTO): boolean {
 
 /** Couleurs des statuts de constat relevés sur le terrain. */
 const COULEURS_CONSTAT: Record<string, string> = {
-  conforme: '#059669',
-  'non conforme': '#dc2626',
-  'en attente': '#b7791f',
-  'occupation illicite': '#7c3aed',
-  'construction illegale': '#e11d48',
+  faisable: '#059669',
+  'non faisable': '#dc2626',
+  'sous réserve': '#b7791f',
 };
 
 /** Couleurs des états de validation administrative. */
@@ -25,13 +23,7 @@ const COULEURS_VALIDATION: Record<string, string> = {
   "en instance": '#f59e0b',
 };
 
-const STATUTS_CONSTAT = [
-  'Conforme',
-  'Non conforme',
-  'En attente',
-  'Occupation illicite',
-  'Construction illegale',
-];
+const STATUTS_CONSTAT = ['Faisable', 'Non faisable', 'Sous réserve'];
 
 const STATUTS_VALIDATION = ['Bon pour la suite', 'En instance'];
 
