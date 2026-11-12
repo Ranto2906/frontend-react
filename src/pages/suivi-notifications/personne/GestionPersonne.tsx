@@ -8,6 +8,7 @@ import type {
   UpdatePersonneRequest,
   PageResponse,
 } from '../../../types';
+import { msgErreur } from '../../../utils';
 
 // ── Types modaux ──
 type Modal =
@@ -122,8 +123,10 @@ export default function GestionPersonne() {
       showToast('Personne supprimée');
       setModal(null);
       loadPersonnes();
-    } catch {
-      showToast('Erreur lors de la suppression', false);
+    } catch (err) {
+      showToast(msgErreur(err, 'Erreur lors de la suppression'), false);
+      // La fenêtre de confirmation reste sinon bloquée sur « Suppression... »
+      setModal(null);
     }
   };
 
@@ -617,7 +620,7 @@ function DeletePersonneModal({
             <strong>{personne.nom}</strong> ?
           </p>
           <p className="text-xs text-red-600 mt-2">
-            Cette action est irréversible.
+            Cette information sera placer dans le corbeille.
           </p>
           <div className="flex justify-end gap-3 mt-6">
             <button

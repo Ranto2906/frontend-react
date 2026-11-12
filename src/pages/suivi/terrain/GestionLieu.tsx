@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { lieuService, villeService } from '../../../services';
 import type { Lieu, Ville } from '../../../types';
+import { msgErreur } from '../../../utils';
 
 // ── Types modaux ──
 type Modal =
@@ -63,10 +64,16 @@ export default function GestionLieu() {
   };
 
   const handleDelete = async (id: number) => {
-    await lieuService.supprimer(id);
-    showToast('Lieu supprimé');
-    setModal(null);
-    loadData();
+    try {
+      await lieuService.supprimer(id);
+      showToast('Lieu supprimé');
+      setModal(null);
+      loadData();
+    } catch (err) {
+      showToast(msgErreur(err, 'Erreur lors de la suppression'), false);
+      // La fenêtre de confirmation reste sinon bloquée sur « Suppression... »
+      setModal(null);
+    }
   };
 
   return (
@@ -295,7 +302,7 @@ function DeleteLieuModal({
           <p className="text-sm text-gray-700">
             Êtes-vous sûr de vouloir supprimer le lieu <strong>{lieu.libelle}</strong> ?
           </p>
-          <p className="text-xs text-red-600 mt-2">Cette action est irréversible.</p>
+          <p className="text-xs text-red-600 mt-2">Cette information sera placer dans le corbeille.</p>
           <div className="flex justify-end gap-3 mt-6">
             <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
               Annuler

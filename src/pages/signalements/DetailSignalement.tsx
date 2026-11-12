@@ -5,6 +5,7 @@ import MiniMap from '../../components/MiniMap';
 import type { Signalement, StatutSignalement, SignalementAudit, PhotoDTO, Parcelle, Propriete } from '../../types';
 import type { GeometrieDTO } from '../../services/signalementService';
 import { extraireProprieteManuelle } from '../../utils/proprieteManuelle';
+import { msgErreur } from '../../utils';
 
 // Couleurs de repli si le backend ne fournit pas couleurStatutHex
 const COULEURS_STATUT: Record<string, string> = {
@@ -165,8 +166,8 @@ export default function DetailSignalement() {
       navigate('/signalements', {
         state: { toast: { msg: 'Signalement supprimé', ok: true } },
       });
-    } catch {
-      showToast('Erreur lors de la suppression', false);
+    } catch (err) {
+      showToast(msgErreur(err, 'Erreur lors de la suppression'), false);
       setShowDelete(false);
     }
   };
@@ -537,7 +538,7 @@ export default function DetailSignalement() {
                 Supprimer définitivement <strong>{sig.reference || sig.idSignalement.slice(0, 8)}</strong>
                 {sig.nomVille ? ` (${sig.nomVille})` : ''} ?
               </p>
-              <p className="text-xs text-red-600 mt-2">Cette action est irréversible.</p>
+              <p className="text-xs text-red-600 mt-2">Cette information sera placer dans le corbeille.</p>
               <div className="flex justify-end gap-3 mt-6">
                 <button
                   onClick={() => setShowDelete(false)}

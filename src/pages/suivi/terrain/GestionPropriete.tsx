@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { proprieteService, lieuService, villeService, typeProprieteService } from '../../../services';
 import type { Propriete, ProprieteType, Lieu, Ville, PageResponse } from '../../../types';
+import { msgErreur } from '../../../utils';
 
 type Modal =
   | { type: 'create' }
@@ -133,8 +134,10 @@ export default function GestionPropriete() {
       showToast('Propriété supprimée');
       setModal(null);
       loadData();
-    } catch {
-      showToast('Erreur lors de la suppression', false);
+    } catch (err) {
+      showToast(msgErreur(err, 'Erreur lors de la suppression'), false);
+      // La fenêtre de confirmation reste sinon bloquée sur « Suppression... »
+      setModal(null);
     }
   };
 
@@ -394,7 +397,7 @@ function DeleteProprieteModal({ propriete, onConfirm, onClose }: { propriete: Pr
         <div className="px-6 py-4 border-b border-red-200 bg-red-50"><h2 className="text-lg font-bold text-red-800">🗑️ Supprimer la propriété</h2></div>
         <div className="p-6">
           <p className="text-sm text-gray-700">Êtes-vous sûr de vouloir supprimer la propriété <strong>{propriete.nom}</strong> ?</p>
-          <p className="text-xs text-red-600 mt-2">Cette action est irréversible.</p>
+          <p className="text-xs text-red-600 mt-2">Cette information sera placer dans le corbeille.</p>
           <div className="flex justify-end gap-3 mt-6">
             <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">Annuler</button>
             <button onClick={async () => { setSaving(true); try { await onConfirm(propriete.idPropriete); } catch { setSaving(false); } }} disabled={saving} className="px-4 py-2 text-sm bg-red-600 hover:bg-red-700 disabled:bg-red-400 text-white rounded-lg font-medium transition-colors">

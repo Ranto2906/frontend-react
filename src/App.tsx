@@ -51,6 +51,7 @@ import Roles from './pages/roles/Roles';
 import Journal from './pages/journal/Journal';
 import Sessions from './pages/sessions/Sessions';
 import Audit from './pages/audit/Audit';
+import Corbeille from './pages/corbeille/Corbeille';
 
 export default function App() {
   return (
@@ -123,6 +124,7 @@ export default function App() {
             <Route path="sessions" element={<Sessions />} />
             <Route path="audit" element={<Audit />} />
             <Route path="admin" element={<Admin />} />
+            <Route path="corbeille" element={<Corbeille />} />
           </Route>
 
           {/* Fallback */}

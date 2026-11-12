@@ -200,12 +200,16 @@ export interface ImportExcelResult {
 export interface ImportSituationDemandesResult {
   feuillesTraitees: string[];
   prixImportes: number;
+  /** Lignes de demande réellement traitées (= créées + mises à jour). */
+  lignesTraitees?: number;
   dossiersImportes: number;
   dossiersMisAJour: number;
   parcellesLiees: number;
   lieuxImportes: number;
   personnesReutilisees: number;
   proprietesReutilisees: number;
+  /** Propriétés créées (les homonymes existantes sont réutilisées). */
+  proprietesCrees?: number;
   erreurs: string[];
 }
 

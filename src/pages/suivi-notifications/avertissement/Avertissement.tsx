@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { avertissementService } from '../../../services';
 import type { Avertissement, PageResponse } from '../../../types';
+import { msgErreur } from '../../../utils';
 
 // ── Types modaux (suppression uniquement — création/édition sur page dédiée) ──
 type Modal = { type: 'delete'; avert: Avertissement } | null;
@@ -67,8 +68,8 @@ export default function Avertissement() {
       showToast('Avertissement supprimé');
       setModal(null);
       load();
-    } catch {
-      showToast("Erreur lors de la suppression", false);
+    } catch (err) {
+      showToast(msgErreur(err, 'Erreur lors de la suppression'), false);
     }
   };
 
@@ -319,7 +320,7 @@ function DeleteModal({
             <strong>{avert.nomPersonne || `Personne #${avert.idPersonne}`}</strong> pour le{' '}
             <strong>Propriété n° {avert.numeroPropriete || avert.idPropriete || '—'} · Lot n° {avert.numeroLot || '—'}</strong> ?
           </p>
-          <p className="text-xs text-red-600 mt-2">Cette action est irréversible.</p>
+          <p className="text-xs text-red-600 mt-2">Cette information sera placer dans le corbeille.</p>
           <div className="flex justify-end gap-3 mt-6">
             <button
               onClick={onClose}

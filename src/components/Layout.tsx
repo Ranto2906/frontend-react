@@ -1,5 +1,7 @@
-import { Outlet, NavLink, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { Outlet, NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import { corbeilleService } from '../services';
 import seimadLogo from '../assets/logoseimad.jpg';
 
 const navItems = [
@@ -11,11 +13,26 @@ const navItems = [
   { to: '/gestion-mobile', label: 'Gestion mobile', icon: '📱' },
   { to: '/finances', label: 'Finances', icon: '💰' },
   { to: '/admin', label: 'Administration', icon: '⚙️' },
+  { to: '/corbeille', label: 'Corbeille', icon: '🗑️' },
 ];
 
 export default function Layout() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // Nombre d'éléments en corbeille : rafraîchi à chaque changement de page
+  const [enCorbeille, setEnCorbeille] = useState(0);
+  useEffect(() => {
+    const rafraichir = () =>
+      corbeilleService
+        .compter()
+        .then((r) => setEnCorbeille(r.total))
+        .catch(() => setEnCorbeille(0));
+    rafraichir();
+    window.addEventListener('corbeille:refresh', rafraichir);
+    return () => window.removeEventListener('corbeille:refresh', rafraichir);
+  }, [location.pathname]);
 
   const handleLogout = async () => {
     await logout();
@@ -55,7 +72,12 @@ export default function Layout() {
               }
             >
               <span className="text-lg">{item.icon}</span>
-              <span>{item.label}</span>
+              <span className="flex-1">{item.label}</span>
+              {item.to === '/corbeille' && enCorbeille > 0 && (
+                <span className="min-w-5 px-1.5 py-0.5 rounded-full bg-red-600 text-white text-[11px] font-semibold text-center">
+                  {enCorbeille}
+                </span>
+              )}
             </NavLink>
           ))}
         </nav>

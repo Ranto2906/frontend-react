@@ -81,7 +81,7 @@ export default function Login() {
         </form>
 
         <p className="text-center text-xs text-gray-400 mt-6">
-          Compte démo : admin / admin123
+          Accès réservé au personnel autorisé du Département Patrimoine.
         </p>
       </div>
     </div>

@@ -2,17 +2,13 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { dossierService } from '../../services';
 import type { Etape, EtapeRequest } from '../../types';
+import { msgErreur } from '../../utils';
 
 // ════════════════════════════════════════════════════════════
 // Configuration des étapes du workflow de suivi de dossier :
 // création, modification, réordonnancement et suppression
 // des étapes du référentiel.
 // ═════════════════════════════════════ GestionEtapes.tsx ════
-
-function msgErreur(err: unknown, fallback: string): string {
-  const e = err as { response?: { data?: { message?: string } } };
-  return e?.response?.data?.message || fallback;
-}
 
 export default function GestionEtapes() {
   const navigate = useNavigate();

@@ -6,6 +6,7 @@ import type {
   CreateUtilisateurRequest, UpdateUtilisateurRequest,
   PageResponse,
 } from '../../types';
+import { msgErreur } from '../../utils';
 
 // ── Types locaux ──
 type Modal =
@@ -85,8 +86,10 @@ export default function Utilisateurs() {
       showToast('Utilisateur supprimé');
       setModal(null);
       loadUsers();
-    } catch {
-      showToast('Erreur lors de la suppression', false);
+    } catch (err) {
+      showToast(msgErreur(err, 'Erreur lors de la suppression'), false);
+      // La fenêtre de confirmation reste sinon bloquée sur « Suppression... »
+      setModal(null);
     }
   };
 
@@ -803,7 +806,7 @@ function DeleteModal({
             Êtes-vous sûr de vouloir supprimer l'utilisateur <strong>{user.nomUtilisateur}</strong> ?
           </p>
           <p className="text-xs text-red-600 mt-2">
-            Cette action est irréversible. Toutes les données associées seront supprimées.
+            Cette information sera placer dans le corbeille. Toutes les données associées seront supprimées.
           </p>
           <div className="flex justify-end gap-3 mt-6">
             <button onClick={onClose}

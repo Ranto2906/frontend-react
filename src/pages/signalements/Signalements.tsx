@@ -3,6 +3,7 @@ import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { signalementService, villeService } from '../../services';
 import type { Signalement, Ville, PageResponse } from '../../types';
 import { extraireProprieteManuelle } from '../../utils/proprieteManuelle';
+import { msgErreur } from '../../utils';
 
 type Modal = { type: 'delete'; sig: Signalement } | null;
 
@@ -137,8 +138,8 @@ export default function Signalements() {
       showToast('Signalement supprimé');
       setModal(null);
       load();
-    } catch {
-      showToast('Erreur lors de la suppression', false);
+    } catch (err) {
+      showToast(msgErreur(err, 'Erreur lors de la suppression'), false);
       setModal(null);
     }
   };
@@ -448,7 +449,7 @@ function DeleteModal({
             {sig.nomVille ? ` (${sig.nomVille})` : ''} ?
           </p>
           <p className="text-xs text-red-600 mt-2">
-            Cette action est irréversible. La géométrie GPS associée sera également supprimée.
+            Cette information sera placer dans le corbeille. La géométrie GPS associée sera également supprimée.
           </p>
           <div className="flex justify-end gap-3 mt-6">
             <button

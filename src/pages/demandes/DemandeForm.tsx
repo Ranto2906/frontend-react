@@ -60,6 +60,10 @@ export default function DemandeForm() {
   const [idStatutDossier, setIdStatutDossier] = useState('');
   const [idVille, setIdVille] = useState('');
   const [montantTtc, setMontantTtc] = useState('');
+  // Le montant calculé (superficie × prix au m²) ne pré-remplit le champ que
+  // tant qu'aucun montant n'est enregistré ou saisi : la valeur du dossier
+  // (ex. colonne « Valeur Ariary TTC » du fichier Excel) prime toujours.
+  const [montantAuto, setMontantAuto] = useState(true);
 
   // ── Type de dossier + dossier fournie (texte libre) ──
   const [typesDossier, setTypesDossier] = useState<TypeDossier[]>([]);
@@ -186,6 +190,10 @@ export default function DemandeForm() {
         setIdTypeDossier(d.idTypeDossier != null ? String(d.idTypeDossier) : '');
         setDossierFournieTexte(d.libelleDossierFournie ?? '');
         setIdVille(String(d.idVille));
+        // Montant déjà enregistré sur le dossier : il prime sur le recalcul.
+        const montantEnregistre = d.montantTotal != null ? Number(d.montantTotal) : 0;
+        setMontantTtc(montantEnregistre > 0 ? String(montantEnregistre) : '');
+        setMontantAuto(!(montantEnregistre > 0));
         // Prix figé sur le dossier : les calculs l'utilisent en priorité
         setPrixDossier(d.prixM2Ttc != null
           ? { prixTtc: Number(d.prixM2Ttc), prixHt: d.prixM2Ht != null ? Number(d.prixM2Ht) : undefined }
@@ -427,8 +435,10 @@ export default function DemandeForm() {
     n.toLocaleString('fr-FR', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
   useEffect(() => {
-    setMontantTtc(totaux.totalTtc ? String(totaux.totalTtc) : '');
-  }, [totaux.totalTtc]);
+    if (!montantAuto) return;
+    // Arrondi au centime : le montant est stocké en numeric(16,2).
+    setMontantTtc(totaux.totalTtc > 0 ? totaux.totalTtc.toFixed(2) : '');
+  }, [totaux.totalTtc, montantAuto]);
 
   const ajouterParcelleLigne = () => {
     setParcelleLignes((l) => [...l, { cle: Date.now(), superficieM2: '', observation: '' }]);
@@ -440,6 +450,12 @@ export default function DemandeForm() {
 
   const retirerParcelleLigne = (cle: number) => {
     setParcelleLignes((l) => (l.length > 1 ? l.filter((li) => li.cle !== cle) : l));
+  };
+
+  /** Applique au champ le montant calculé (superficie × prix au m²). */
+  const appliquerMontantCalcule = () => {
+    setMontantTtc(totaux.totalTtc > 0 ? totaux.totalTtc.toFixed(2) : '');
+    setMontantAuto(false);
   };
 
   // Recherche de personnes existantes (pour le mode « existant »)
@@ -489,10 +505,10 @@ export default function DemandeForm() {
     .filter((o): o is ProprieteOccupation => o != null && !o.disponible);
 
   const peutSoumettre = useMemo(
-    () => numeroDossier.trim() && idVille && lieu.trim()
+    () => numeroDossier.trim() && idVille && (edition || lieu.trim())
       && lignes.some((li) => li.idPersonne || li.nom.trim())
       && proprietesSaturees.length === 0,
-    [numeroDossier, idVille, lieu, lignes, proprietesSaturees],
+    [numeroDossier, idVille, edition, lieu, lignes, proprietesSaturees],
   );
 
   const soumettre = async (e: React.FormEvent) => {
@@ -677,10 +693,29 @@ export default function DemandeForm() {
                 min="0"
                 step="0.01"
                 value={montantTtc}
-                onChange={(e) => setMontantTtc(e.target.value)}
-                placeholder="Prérempli selon la ville et la superficie"
+                onChange={(e) => {
+                  setMontantTtc(e.target.value);
+                  setMontantAuto(e.target.value.trim() === '');
+                }}
+                placeholder="Montant du dossier ; vide = superficie × prix au m²"
                 className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
               />
+              {/* Montant recalculé à partir des propriétés : affiché à côté de la
+                  valeur enregistrée (celle du fichier Excel par ex.) et appliqué
+                  uniquement sur demande explicite. */}
+              {totaux.totalTtc > 0
+                && Math.round(totaux.totalTtc * 100) !== Math.round((Number(montantTtc) || 0) * 100) && (
+                  <p className="text-[11px] text-gray-500 mt-1">
+                    Recalculé (superficie × prix au m²) : <strong className="text-blue-700">{formatAr(totaux.totalTtc)} Ar</strong>{' '}
+                    <button
+                      type="button"
+                      onClick={appliquerMontantCalcule}
+                      className="text-blue-600 underline font-medium"
+                    >
+                      Appliquer
+                    </button>
+                  </p>
+                )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-600 mb-1">Transmission</label>
@@ -713,88 +748,100 @@ export default function DemandeForm() {
           </div>
 
           <div className="mt-5 pt-5 border-t border-gray-100">
-            <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
-              <div>
-                <label className="block text-sm font-medium text-gray-600">Lieu <span className="text-red-500">*</span></label>
-                <p className="text-xs text-gray-400 mt-1">Sélectionnez un lieu existant ou créez-le s’il n’est pas encore enregistré.</p>
-              </div>
-              <div className="flex rounded-lg border border-gray-300 overflow-hidden text-xs">
-                <button
-                  type="button"
-                  onClick={() => setModeLieu('existant')}
-                  className={`px-3 py-1.5 font-medium transition-colors ${modeLieu === 'existant' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                >
-                  Lieu existant
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setModeLieu('nouveau')}
-                  className={`px-3 py-1.5 font-medium transition-colors ${modeLieu === 'nouveau' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
-                >
-                  Nouveau lieu
-                </button>
-              </div>
-            </div>
+            {edition ? (
+              <>
+                <label className="block text-sm font-medium text-gray-600">Lieu</label>
+                <p className="mt-1 px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm text-gray-700">
+                  {lieu || 'Lieu conservé dans les données du dossier'}
+                </p>
+                <p className="text-xs text-gray-400 mt-1">Le lieu existant est conservé lors de la modification.</p>
+              </>
+            ) : (
+              <>
+                <div className="flex flex-wrap items-center justify-between gap-3 mb-3">
+                  <div>
+                    <label className="block text-sm font-medium text-gray-600">Lieu <span className="text-red-500">*</span></label>
+                    <p className="text-xs text-gray-400 mt-1">Sélectionnez un lieu existant ou créez-le s’il n’est pas encore enregistré.</p>
+                  </div>
+                  <div className="flex rounded-lg border border-gray-300 overflow-hidden text-xs">
+                    <button
+                      type="button"
+                      onClick={() => setModeLieu('existant')}
+                      className={`px-3 py-1.5 font-medium transition-colors ${modeLieu === 'existant' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      Lieu existant
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setModeLieu('nouveau')}
+                      className={`px-3 py-1.5 font-medium transition-colors ${modeLieu === 'nouveau' ? 'bg-blue-600 text-white' : 'bg-white text-gray-600 hover:bg-gray-50'}`}
+                    >
+                      Nouveau lieu
+                    </button>
+                  </div>
+                </div>
 
-            {modeLieu === 'existant' ? (
-              <div className="relative">
-                <input
-                  type="text"
-                  value={rechercheLieu}
-                  onChange={(e) => setRechercheLieu(e.target.value)}
-                  placeholder="Rechercher un lieu par nom ou par ville (2 caractères min.)"
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-                {resultatsLieux.length > 0 && (
-                  <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
-                    {resultatsLieux.map((l) => (
-                      <button
-                        key={l.idLieu}
-                        type="button"
-                        onClick={() => selectionnerLieu(l)}
-                        className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm border-b border-gray-100 last:border-0"
-                      >
-                        <span className="font-medium text-gray-800">{l.libelle}</span>
-                        <span className="block text-xs text-gray-500">{l.nomVille || `Ville #${l.idVille}`}</span>
-                      </button>
-                    ))}
+                {modeLieu === 'existant' ? (
+                  <div className="relative">
+                    <input
+                      type="text"
+                      value={rechercheLieu}
+                      onChange={(e) => setRechercheLieu(e.target.value)}
+                      placeholder="Rechercher un lieu par nom ou par ville (2 caractères min.)"
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                    {resultatsLieux.length > 0 && (
+                      <div className="absolute z-10 w-full mt-1 bg-white border border-gray-200 rounded-lg shadow-lg max-h-56 overflow-y-auto">
+                        {resultatsLieux.map((l) => (
+                          <button
+                            key={l.idLieu}
+                            type="button"
+                            onClick={() => selectionnerLieu(l)}
+                            className="w-full text-left px-3 py-2 hover:bg-blue-50 text-sm border-b border-gray-100 last:border-0"
+                          >
+                            <span className="font-medium text-gray-800">{l.libelle}</span>
+                            <span className="block text-xs text-gray-500">{l.nomVille || `Ville #${l.idVille}`}</span>
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    {lieu && (
+                      <p className="mt-2 text-xs text-green-700">✓ Lieu sélectionné : <strong>{lieu}</strong></p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <input
+                      type="text"
+                      value={nomNouveauLieu}
+                      onChange={(e) => setNomNouveauLieu(e.target.value)}
+                      placeholder="Nom du nouveau lieu *"
+                      className="md:col-span-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    />
+                    <select
+                      value={idVille}
+                      onChange={(e) => {
+                        setIdVille(e.target.value);
+                        setParcelleLignes((l) => l.map((li) => ({ ...li, idPropriete: undefined, idParcelle: undefined })));
+                      }}
+                      className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
+                    >
+                      <option value="">— Ville du lieu —</option>
+                      {villes.map((v) => <option key={v.idVille} value={v.idVille}>{v.nomVille}</option>)}
+                    </select>
+                    <button
+                      type="button"
+                      onClick={creerEtSelectionnerLieu}
+                      disabled={creationLieuEnCours || !nomNouveauLieu.trim() || !idVille}
+                      className="md:col-span-3 justify-self-start px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg text-sm font-medium transition-colors"
+                    >
+                      {creationLieuEnCours ? 'Création...' : '📍 Créer et sélectionner le lieu'}
+                    </button>
                   </div>
                 )}
-                {lieu && (
-                  <p className="mt-2 text-xs text-green-700">✓ Lieu sélectionné : <strong>{lieu}</strong></p>
-                )}
-              </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                <input
-                  type="text"
-                  value={nomNouveauLieu}
-                  onChange={(e) => setNomNouveauLieu(e.target.value)}
-                  placeholder="Nom du nouveau lieu *"
-                  className="md:col-span-2 w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                />
-                <select
-                  value={idVille}
-                  onChange={(e) => {
-                    setIdVille(e.target.value);
-                    setParcelleLignes((l) => l.map((li) => ({ ...li, idPropriete: undefined, idParcelle: undefined })));
-                  }}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 outline-none"
-                >
-                  <option value="">— Ville du lieu —</option>
-                  {villes.map((v) => <option key={v.idVille} value={v.idVille}>{v.nomVille}</option>)}
-                </select>
-                <button
-                  type="button"
-                  onClick={creerEtSelectionnerLieu}
-                  disabled={creationLieuEnCours || !nomNouveauLieu.trim() || !idVille}
-                  className="md:col-span-3 justify-self-start px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg text-sm font-medium transition-colors"
-                >
-                  {creationLieuEnCours ? 'Création...' : '📍 Créer et sélectionner le lieu'}
-                </button>
-              </div>
+                {erreurLieu && <p className="mt-2 text-xs text-red-600">{erreurLieu}</p>}
+              </>
             )}
-            {erreurLieu && <p className="mt-2 text-xs text-red-600">{erreurLieu}</p>}
           </div>
         </div>
 

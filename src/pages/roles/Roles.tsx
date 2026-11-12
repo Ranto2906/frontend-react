@@ -6,6 +6,7 @@ import type {
   ModuleRBAC, EntiteRBAC, ActionRBAC,
   CreateRoleRequest,
 } from '../../types';
+import { msgErreur } from '../../utils';
 
 type Modal =
   | { type: 'create' }
@@ -95,9 +96,10 @@ export default function Roles() {
       showToast('Rôle supprimé');
       setModal(null);
       loadAll();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'Erreur';
-      showToast(msg, false);
+    } catch (err) {
+      showToast(msgErreur(err, 'Erreur lors de la suppression'), false);
+      // La fenêtre de confirmation reste sinon bloquée sur « Suppression... »
+      setModal(null);
     }
   };
 

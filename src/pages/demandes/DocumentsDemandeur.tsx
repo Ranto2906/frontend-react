@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { documentDemandeurService } from '../../services';
 import type { DocumentDemandeur } from '../../types';
+import { msgErreur } from '../../utils';
 
 // ════════════════════════════════════════════════════════════
 // Documents d'une personne (demandeur) : photo, pièce d'identité,
@@ -89,8 +90,8 @@ export default function DocumentsDemandeur({
     try {
       await documentDemandeurService.supprimer(doc.idDocument);
       setDocs((l) => l.filter((d) => d.idDocument !== doc.idDocument));
-    } catch {
-      setErreur('Erreur lors de la suppression');
+    } catch (err) {
+      setErreur(msgErreur(err, 'Erreur lors de la suppression'));
     }
   };
 

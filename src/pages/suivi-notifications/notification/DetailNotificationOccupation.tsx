@@ -9,6 +9,7 @@ import type {
   SuiviNotification,
 } from '../../../types';
 import type { StatutCouleur } from '../../../types/dossier';
+import { msgErreur } from '../../../utils';
 
 const STATUT_COLORS: Record<string, string> = {
   'En cours': 'bg-yellow-100 text-yellow-800',
@@ -181,8 +182,8 @@ export default function DetailNotificationOccupation() {
       setToast({ msg: 'Étape retirée du suivi', ok: true });
       setTimeout(() => setToast(null), 4000);
       rechargerWorkflow();
-    } catch {
-      setToast({ msg: 'Échec de la suppression', ok: false });
+    } catch (err) {
+      setToast({ msg: msgErreur(err, 'Échec de la suppression'), ok: false });
       setTimeout(() => setToast(null), 4000);
     }
   };

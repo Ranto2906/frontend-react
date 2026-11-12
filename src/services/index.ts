@@ -20,6 +20,7 @@ export { dossierService } from './dossierService';
 export { documentDemandeurService } from './documentDemandeurService';
 export { lieuService, typeDossierService, dossierFournieService } from './referentielDossierService';
 export type { CreateLieuRequest, UpdateLieuRequest } from './referentielDossierService';
+export { corbeilleService } from './corbeilleService';
 export { geometrieService } from './geometrieService';
 export { statistiqueService } from './statistiqueService';
 export type {

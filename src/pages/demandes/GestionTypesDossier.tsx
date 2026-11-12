@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, type FormEvent } from 'react';
 import { Link } from 'react-router-dom';
 import { typeDossierService, dossierFournieService } from '../../services';
 import type { TypeDossier, DossierFournie } from '../../types';
+import { msgErreur } from '../../utils';
 
 // ══════════════════════════════════════════════════════════════
 // Configuration des référentiels de dossiers :
@@ -67,11 +68,17 @@ export default function GestionTypesDossier() {
   };
 
   const handleDelete = async (id: number) => {
-    if (onglet === 'types') await typeDossierService.supprimer(id);
-    else await dossierFournieService.supprimer(id);
-    showToast('Supprimé');
-    setModal(null);
-    loadData();
+    try {
+      if (onglet === 'types') await typeDossierService.supprimer(id);
+      else await dossierFournieService.supprimer(id);
+      showToast('Supprimé');
+      setModal(null);
+      loadData();
+    } catch (err) {
+      showToast(msgErreur(err, 'Erreur lors de la suppression'), false);
+      // La fenêtre de confirmation reste sinon bloquée sur « Suppression... »
+      setModal(null);
+    }
   };
 
   return (
@@ -345,7 +352,7 @@ function DeleteLibelleModal({
           <p className="text-sm text-gray-700">
             Êtes-vous sûr de vouloir supprimer <strong>{libelle}</strong> ?
           </p>
-          <p className="text-xs text-red-600 mt-2">Cette action est irréversible.</p>
+          <p className="text-xs text-red-600 mt-2">Cette information sera placer dans le corbeille.</p>
           <div className="flex justify-end gap-3 mt-6">
             <button onClick={onClose} className="px-4 py-2 text-sm text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
               Annuler

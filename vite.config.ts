@@ -9,7 +9,7 @@ export default defineConfig({
     proxy: {
       '/api': {
         // Cible du backend surridable : API_PROXY_TARGET=http://127.0.0.1:8094 npm run dev
-        target: process.env.API_PROXY_TARGET ?? 'http://127.0.0.1:8093',
+        target: process.env.API_PROXY_TARGET ?? 'http://127.0.0.1:8094',
         changeOrigin: true,
       },
     },

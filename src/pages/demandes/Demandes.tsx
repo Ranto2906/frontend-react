@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { dossierService, villeService, importService, proprieteService } from '../../services';
 import type { DemandeDossier, Ville, Etape, PageResponse, StatistiquesDossier, ImportSituationDemandesResult } from '../../types';
+import { msgErreur } from '../../utils';
 
 function formatDate(d?: string | null): string {
   return d ? new Date(d).toLocaleDateString('fr-FR') : '—';
@@ -25,7 +26,7 @@ export default function Demandes() {
   const [modal, setModal] = useState<DemandeDossier | null>(null);
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
 
-  // Filtres (recherche serveur multi-critères)
+  // Filtres appliqués côté React sur la liste chargée
   const [search, setSearch] = useState('');
   const [filterStatut, setFilterStatut] = useState('');
   const [filterVille, setFilterVille] = useState('');
@@ -71,23 +72,68 @@ export default function Demandes() {
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      const p = await dossierService.rechercher(
-        {
-          search: search.trim() || undefined,
-          idStatut: filterStatut ? Number(filterStatut) : undefined,
-          idVille: filterVille ? Number(filterVille) : undefined,
-          annee: annee ? Number(annee) : undefined,
-          du: du || undefined,
-          au: au || undefined,
-        },
-        currentPage,
-        15,
-      );
-      setList(p.content);
+      const source = (await dossierService.lister(0, 500)).content;
+      const terme = search.trim().toLocaleLowerCase();
+      const resultat = source.filter((dossier) => {
+        if (filterStatut && String(dossier.idStatutDossier ?? '') !== filterStatut) return false;
+        if (filterVille && String(dossier.idVille) !== filterVille) return false;
+        if (annee && String(dossier.annee ?? '') !== annee.trim()) return false;
+        if (du && (!dossier.dateDemande || dossier.dateDemande < du)) return false;
+        if (au && (!dossier.dateDemande || dossier.dateDemande > au)) return false;
+
+        if (terme) {
+          const texte = [
+            dossier.numeroDossier,
+            dossier.transmission,
+            dossier.resultatEtude,
+            dossier.observation,
+            dossier.lieu,
+            dossier.nomVille,
+            dossier.libelleStatut,
+            dossier.libelleTypeDossier,
+            dossier.libelleDossierFournie,
+            ...(dossier.demandeurs ?? []).flatMap((demandeur) => [
+              demandeur.nom,
+              demandeur.contact,
+              demandeur.email,
+            ]),
+            ...(dossier.parcelles ?? []).flatMap((parcelle) => [
+              parcelle.nomPropriete,
+              parcelle.numeroPropriete,
+              parcelle.libelleLieu,
+              parcelle.nomLieu,
+              parcelle.numeroLot,
+            ]),
+          ]
+            .filter((valeur): valeur is string => valeur != null)
+            .join(' ')
+            .toLocaleLowerCase();
+
+          if (!texte.includes(terme)) return false;
+        }
+
+        return true;
+      });
+
+      const size = 15;
+      const totalPages = Math.max(1, Math.ceil(resultat.length / size));
+      const pageClampee = Math.min(currentPage, totalPages - 1);
+      const contenu = resultat.slice(pageClampee * size, pageClampee * size + size);
+      const p: PageResponse<DemandeDossier> = {
+        content: contenu,
+        totalElements: resultat.length,
+        totalPages,
+        size,
+        number: pageClampee,
+        first: pageClampee === 0,
+        last: pageClampee >= totalPages - 1,
+        empty: resultat.length === 0,
+      };
+      setList(contenu);
       setPage(p);
 
       const idsProprietes = [...new Set(
-        p.content.flatMap((dossier) => (dossier.parcelles ?? [])
+        contenu.flatMap((dossier) => (dossier.parcelles ?? [])
           .map((parcelle) => parcelle.idPropriete)
           .filter((id): id is number => id != null)),
       )];
@@ -125,8 +171,8 @@ export default function Demandes() {
       showToast('Dossier supprimé');
       setModal(null);
       load();
-    } catch {
-      showToast('Erreur lors de la suppression', false);
+    } catch (err) {
+      showToast(msgErreur(err, 'Erreur lors de la suppression'), false);
       setModal(null);
     }
   };
@@ -151,7 +197,10 @@ export default function Demandes() {
     try {
       const res = await importService.importerSituationDemandes(fichierImport);
       setImportResultat(res);
-      showToast(`Import terminé : ${res.dossiersImportes} dossier(s) créé(s), ${res.dossiersMisAJour} mis à jour`);
+      showToast(
+        `Import terminé : ${res.lignesTraitees ?? 0} ligne(s) traitée(s) — `
+        + `${res.dossiersImportes} dossier(s) créé(s), ${res.dossiersMisAJour} mis à jour`,
+      );
       load();
     } catch (err: unknown) {
       const status = err instanceof Error && 'response' in err
@@ -478,7 +527,9 @@ export default function Demandes() {
               Le classeur doit contenir une feuille « Prix au m² » (ville, prix TTC/m², observation, HT)
               et une feuille par ville (N° Dossier, Date, Année, Demandeur, Contact, Propriété, TN°,
               Lieu, Coordonnées X/Y, Superficie, Valeur TTC). L'import est idempotent :
-              un dossier déjà importé (même numéro + ville) est mis à jour, pas dupliqué.
+              une ligne est reconnue par (ville, n° de dossier, date, demandeur) — un même
+              numéro peut couvrir plusieurs demandes, et une cellule « Propriété » à plusieurs
+              lignes (plusieurs titres) devient plusieurs propriétés rattachées à la demande.
             </p>
 
             <input
@@ -504,6 +555,11 @@ export default function Demandes() {
 
             {importResultat && (
               <div className="mt-4 text-sm">
+                <p className="mb-2 bg-gray-50 rounded-lg px-3 py-2 text-sm text-gray-700">
+                  <strong>{importResultat.lignesTraitees ?? 0}</strong> ligne(s) de demande
+                  traitée(s) — <strong>{importResultat.dossiersImportes}</strong> dossier(s)
+                  créé(s), <strong>{importResultat.dossiersMisAJour}</strong> mis à jour
+                </p>
                 <div className="grid grid-cols-2 gap-2">
                   <div className="bg-green-50 rounded-lg p-3">
                     <p className="text-xs text-gray-500">Dossiers créés</p>
@@ -524,6 +580,10 @@ export default function Demandes() {
                   <div className="bg-indigo-50 rounded-lg p-3">
                     <p className="text-xs text-gray-500">Lieux créés</p>
                     <p className="text-xl font-bold text-indigo-700">{importResultat.lieuxImportes}</p>
+                  </div>
+                  <div className="bg-purple-50 rounded-lg p-3">
+                    <p className="text-xs text-gray-500">Propriétés créées</p>
+                    <p className="text-xl font-bold text-purple-700">{importResultat.proprietesCrees ?? 0}</p>
                   </div>
                 </div>
                 {importResultat.erreurs.length > 0 && (
@@ -730,7 +790,7 @@ function DeleteModal({
             {dos.nomVille ? ` (${dos.nomVille})` : ''} ?
           </p>
           <p className="text-xs text-red-600 mt-2">
-            Cette action est irréversible. Le suivi (étapes) et les demandeurs rattachés seront également supprimés.
+            Cette information sera placer dans le corbeille. Le suivi (étapes) et les demandeurs rattachés seront également supprimés.
           </p>
           <div className="flex justify-end gap-3 mt-6">
             <button

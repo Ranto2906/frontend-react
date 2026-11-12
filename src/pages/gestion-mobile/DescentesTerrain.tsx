@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { descenteTerrainService } from '../../services';
 import type { DescenteTerrainDTO, DescenteTerrainRequest, DossierDescenteResult, PageResponse } from '../../types';
+import { msgErreur } from '../../utils';
 
 type Modal = { type: 'delete'; d: DescenteTerrainDTO } | null;
 
@@ -115,8 +116,8 @@ export default function DescentesTerrain() {
       showToast('Descente supprimée');
       setModal(null);
       load();
-    } catch {
-      showToast('Erreur lors de la suppression', false);
+    } catch (err) {
+      showToast(msgErreur(err, 'Erreur lors de la suppression'), false);
       setModal(null);
     }
   };
@@ -466,7 +467,7 @@ function DeleteModal({
             {d.numeroDossier ? ` (dossier ${d.numeroDossier})` : ''} ?
           </p>
           <p className="text-xs text-red-600 mt-2">
-            Cette action est irréversible. La géométrie GPS associée sera également supprimée.
+            Cette information sera placer dans le corbeille. La géométrie GPS associée sera également supprimée.
           </p>
           <div className="flex justify-end gap-3 mt-6">
             <button

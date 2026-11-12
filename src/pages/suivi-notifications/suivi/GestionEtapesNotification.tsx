@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { suiviNotificationService } from '../../../services';
 import type { EtapeNotification } from '../../../types';
+import { msgErreur } from '../../../utils';
 
 // ════════════════════════════════════════════════════════════
 // Config Étapes — configuration du workflow du suivi des
@@ -10,11 +11,6 @@ import type { EtapeNotification } from '../../../types';
 // L'étape marquée « finale » clôture automatiquement la
 // notification lorsqu'elle est enregistrée dans un suivi.
 // ════════════════════════════════════════════════════════════
-
-function msgErreur(err: unknown, fallback: string): string {
-  const e = err as { response?: { data?: { message?: string } } };
-  return e?.response?.data?.message || fallback;
-}
 
 export default function GestionEtapesNotification() {
   const navigate = useNavigate();

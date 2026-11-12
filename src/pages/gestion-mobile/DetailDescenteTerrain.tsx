@@ -7,6 +7,7 @@ import type {
   DescenteTerrainRequest,
   DescenteStatutHistorique,
 } from '../../types';
+import { msgErreur } from '../../utils';
 
 const COULEURS_CONSTAT: Record<string, string> = {
   faisable: '#059669',
@@ -160,8 +161,8 @@ export default function DetailDescenteTerrain() {
     try {
       await descenteTerrainService.supprimer(dt.idDescente);
       navigate('/descentes-terrain', { state: { toast: { msg: 'Descente supprimée', ok: true } } });
-    } catch {
-      showToast('Erreur lors de la suppression', false);
+    } catch (err) {
+      showToast(msgErreur(err, 'Erreur lors de la suppression'), false);
       setConfirmSuppression(false);
     }
   };
@@ -652,7 +653,7 @@ export default function DetailDescenteTerrain() {
                 {dt.numeroDossier ? ` (dossier ${dt.numeroDossier})` : ''} ?
               </p>
               <p className="text-xs text-red-600 mt-2">
-                Cette action est irréversible. La géométrie GPS associée sera également supprimée.
+                Cette information sera placer dans le corbeille. La géométrie GPS associée sera également supprimée.
               </p>
               <div className="flex justify-end gap-3 mt-6">
                 <button

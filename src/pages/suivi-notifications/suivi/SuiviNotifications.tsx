@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { suiviNotificationService } from '../../../services';
 import type { SuiviNotification, PageResponse } from '../../../types';
+import { msgErreur } from '../../../utils';
 
 const STATUT_COLORS: Record<string, string> = {
   'En cours': 'bg-yellow-100 text-yellow-800',
@@ -64,8 +65,10 @@ export default function SuiviNotifications() {
       showToast('Suivi supprimé');
       setModal(null);
       load();
-    } catch {
-      showToast('Erreur lors de la suppression', false);
+    } catch (err) {
+      showToast(msgErreur(err, 'Erreur lors de la suppression'), false);
+      // La fenêtre de confirmation reste sinon bloquée sur « Suppression... »
+      setModal(null);
     }
   };
 
@@ -306,7 +309,7 @@ function DeleteModal({
             </strong>{' '}
             ?
           </p>
-          <p className="text-xs text-red-600 mt-2">Cette action est irréversible.</p>
+          <p className="text-xs text-red-600 mt-2">Cette information sera placer dans le corbeille.</p>
           <div className="flex justify-end gap-3 mt-6">
             <button
               onClick={onClose}

@@ -31,6 +31,13 @@ export type {
   AuditDTO,
 } from './admin';
 
+// Corbeille (éléments supprimés)
+export type {
+  CorbeilleDTO,
+  CorbeilleElementDTO,
+  CorbeilleStatistique,
+} from './corbeille';
+
 // Patrimoine
 export type {
   Ville,

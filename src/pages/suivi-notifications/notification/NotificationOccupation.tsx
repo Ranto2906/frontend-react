@@ -1,7 +1,8 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
 import { notificationOccupationService } from '../../../services';
 import type { NotificationOccupation, PageResponse } from '../../../types';
+import { msgErreur } from '../../../utils';
 
 // ── Options ──
 const STATUT_OPTIONS = ['En cours', 'Traité', 'Clôturée'];
@@ -22,6 +23,10 @@ export default function NotificationOccupation() {
   const [page, setPage] = useState<PageResponse<NotificationOccupation> | null>(null);
   const [search, setSearch] = useState('');
   const [statut, setStatut] = useState('');
+  const [anneeFilter, setAnneeFilter] = useState('');
+  const [dateDebut, setDateDebut] = useState('');
+  const [dateFin, setDateFin] = useState('');
+  const [filtresVisibles, setFiltresVisibles] = useState(false);
   const [currentPage, setCurrentPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<Modal>(null);
@@ -41,29 +46,44 @@ export default function NotificationOccupation() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.state]);
 
-  // ── Charger les notifications ──
+  // ── Charger les notifications et appliquer les filtres ──
   const load = useCallback(async () => {
     setLoading(true);
     try {
-      if (statut) {
-        const data = await notificationOccupationService.listerParStatut(statut);
-        setPage(null);
-        setList(data);
-      } else if (search.trim()) {
-        const data = await notificationOccupationService.rechercher(search.trim(), currentPage, 15);
-        setPage(data);
-        setList(data.content);
-      } else {
-        const data = await notificationOccupationService.lister(currentPage, 15);
-        setPage(data);
-        setList(data.content);
-      }
+      const source = (
+        search.trim()
+          ? await notificationOccupationService.rechercher(search.trim(), 0, 500)
+          : await notificationOccupationService.lister(0, 500)
+      ).content;
+      const resultat = source.filter((notification) => {
+        if (statut && notification.statut !== statut) return false;
+        if (anneeFilter && String(notification.annee ?? '') !== anneeFilter.trim()) return false;
+        if (dateDebut && (!notification.dateNotification || notification.dateNotification < dateDebut)) return false;
+        if (dateFin && (!notification.dateNotification || notification.dateNotification > dateFin)) return false;
+        return true;
+      });
+
+      const size = 15;
+      const totalPages = Math.max(1, Math.ceil(resultat.length / size));
+      const pageClampee = Math.min(currentPage, totalPages - 1);
+      const content = resultat.slice(pageClampee * size, pageClampee * size + size);
+      setList(content);
+      setPage({
+        content,
+        totalElements: resultat.length,
+        totalPages,
+        size,
+        number: pageClampee,
+        first: pageClampee === 0,
+        last: pageClampee >= totalPages - 1,
+        empty: resultat.length === 0,
+      });
     } catch {
       showToast('Erreur lors du chargement des notifications', false);
     } finally {
       setLoading(false);
     }
-  }, [search, statut, currentPage]);
+  }, [search, statut, anneeFilter, dateDebut, dateFin, currentPage]);
 
   useEffect(() => {
     load();
@@ -76,12 +96,27 @@ export default function NotificationOccupation() {
       showToast('Notification supprimée');
       setModal(null);
       load();
-    } catch {
-      showToast('Erreur lors de la suppression', false);
+    } catch (err) {
+      showToast(msgErreur(err, 'Erreur lors de la suppression'), false);
+      // La fenêtre de confirmation reste sinon bloquée sur « Suppression... »
+      setModal(null);
     }
   };
 
   const total = page?.totalElements ?? list.length;
+  const nbFiltresActifs = useMemo(
+    () => [search, statut, anneeFilter, dateDebut, dateFin].filter((value) => value).length,
+    [search, statut, anneeFilter, dateDebut, dateFin],
+  );
+
+  const reinitialiserFiltres = () => {
+    setSearch('');
+    setStatut('');
+    setAnneeFilter('');
+    setDateDebut('');
+    setDateFin('');
+    setCurrentPage(0);
+  };
 
   return (
     <div className="flex-1 overflow-y-auto p-6">
@@ -130,24 +165,76 @@ export default function NotificationOccupation() {
             setCurrentPage(0);
           }}
           placeholder="🔍 Rechercher (contenu, constats, doléances...)"
-          className="w-full max-w-md px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
+          className="w-full max-w-xl px-4 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none text-sm"
         />
-        <select
-          value={statut}
-          onChange={(e) => {
-            setStatut(e.target.value);
-            setCurrentPage(0);
-          }}
-          className="px-3 py-2 border border-gray-300 rounded-lg text-sm focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none"
+        <button
+          onClick={() => setFiltresVisibles((visible) => !visible)}
+          className={`px-4 py-2 rounded-lg text-sm transition-colors ${
+            filtresVisibles || nbFiltresActifs > 0
+              ? 'bg-blue-600 text-white'
+              : 'bg-white border border-gray-300 text-gray-600 hover:bg-gray-50'
+          }`}
         >
-          <option value="">Tous les statuts</option>
-          {STATUT_OPTIONS.map((s) => (
-            <option key={s} value={s}>
-              {s}
-            </option>
-          ))}
-        </select>
+          🎛️ Filtres
+          {nbFiltresActifs > 0 && (
+            <span className="ml-2 inline-flex items-center justify-center w-5 h-5 rounded-full bg-white/25 text-xs">
+              {nbFiltresActifs}
+            </span>
+          )}
+        </button>
+        {nbFiltresActifs > 0 && (
+          <button
+            onClick={reinitialiserFiltres}
+            className="px-3 py-2 text-sm text-gray-500 hover:bg-gray-100 rounded-lg transition-colors"
+          >
+            ✕ Réinitialiser
+          </button>
+        )}
       </div>
+
+      {filtresVisibles && (
+        <div className="grid grid-cols-1 gap-4 mb-4 p-5 bg-gray-50 border border-gray-200 rounded-lg md:grid-cols-2 xl:grid-cols-4">
+          <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-gray-600">
+            Statut
+            <select
+              value={statut}
+              onChange={(e) => { setStatut(e.target.value); setCurrentPage(0); }}
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white text-sm font-normal"
+            >
+              <option value="">Tous les statuts</option>
+              {STATUT_OPTIONS.map((s) => <option key={s} value={s}>{s}</option>)}
+            </select>
+          </label>
+          <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-gray-600">
+            Année
+            <input
+              type="number"
+              value={anneeFilter}
+              onChange={(e) => { setAnneeFilter(e.target.value); setCurrentPage(0); }}
+              placeholder="Ex : 2026"
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white text-sm font-normal"
+            />
+          </label>
+          <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-gray-600">
+            Date notification (du)
+            <input
+              type="date"
+              value={dateDebut}
+              onChange={(e) => { setDateDebut(e.target.value); setCurrentPage(0); }}
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white text-sm font-normal"
+            />
+          </label>
+          <label className="flex min-w-0 flex-col gap-1 text-xs font-medium text-gray-600">
+            Date notification (au)
+            <input
+              type="date"
+              value={dateFin}
+              onChange={(e) => { setDateFin(e.target.value); setCurrentPage(0); }}
+              className="w-full px-3 py-2.5 border border-gray-300 rounded-lg bg-white text-sm font-normal"
+            />
+          </label>
+        </div>
+      )}
 
       {/* Tableau */}
       <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
@@ -255,7 +342,7 @@ export default function NotificationOccupation() {
         )}
 
         {/* Pagination */}
-        {!statut && page && page.totalPages > 1 && (
+        {page && page.totalPages > 1 && (
           <div className="flex items-center justify-between px-4 py-3 border-t border-gray-200 bg-gray-50">
             <p className="text-xs text-gray-500">
               Page {page.number + 1} sur {page.totalPages}
@@ -325,7 +412,7 @@ function DeleteModal({
             </strong>{' '}
             ?
           </p>
-          <p className="text-xs text-red-600 mt-2">Cette action est irréversible.</p>
+          <p className="text-xs text-red-600 mt-2">Cette information sera placer dans le corbeille.</p>
           <div className="flex justify-end gap-3 mt-6">
             <button
               onClick={onClose}
