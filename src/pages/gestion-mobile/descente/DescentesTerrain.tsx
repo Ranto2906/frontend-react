@@ -1,8 +1,8 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { descenteTerrainService } from '../../services';
-import type { DescenteTerrainDTO, DescenteTerrainRequest, DossierDescenteResult, PageResponse } from '../../types';
-import { msgErreur } from '../../utils';
+import { descenteTerrainService } from '../../../services';
+import type { DescenteTerrainDTO, DescenteTerrainRequest, DossierDescenteResult, PageResponse } from '../../../types';
+import { msgErreur } from '../../../utils';
 
 type Modal = { type: 'delete'; d: DescenteTerrainDTO } | null;
 

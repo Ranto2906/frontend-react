@@ -1,11 +1,11 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useParams, useLocation } from 'react-router-dom';
-import { signalementService, photoService, proprieteService } from '../../services';
-import MiniMap from '../../components/MiniMap';
-import type { Signalement, StatutSignalement, SignalementAudit, PhotoDTO, Parcelle, Propriete } from '../../types';
-import type { GeometrieDTO } from '../../services/signalementService';
-import { extraireProprieteManuelle } from '../../utils/proprieteManuelle';
-import { msgErreur } from '../../utils';
+import { signalementService, photoService, proprieteService } from '../../../services';
+import MiniMap from '../../../components/MiniMap';
+import type { Signalement, StatutSignalement, SignalementAudit, PhotoDTO, Parcelle, Propriete } from '../../../types';
+import type { GeometrieDTO } from '../../../services/signalementService';
+import { extraireProprieteManuelle } from '../../../utils/proprieteManuelle';
+import { msgErreur } from '../../../utils';
 
 // Couleurs de repli si le backend ne fournit pas couleurStatutHex
 const COULEURS_STATUT: Record<string, string> = {

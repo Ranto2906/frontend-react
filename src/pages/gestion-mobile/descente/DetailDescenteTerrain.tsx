@@ -1,13 +1,13 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate, useLocation, Link } from 'react-router-dom';
-import { descenteTerrainService } from '../../services';
-import PhotosSection from '../suivi-notifications/PhotosSection';
+import { descenteTerrainService } from '../../../services';
+import PhotosSection from '../../suivi-notifications/PhotosSection';
 import type {
   DescenteTerrainDTO,
   DescenteTerrainRequest,
   DescenteStatutHistorique,
-} from '../../types';
-import { msgErreur } from '../../utils';
+} from '../../../types';
+import { msgErreur } from '../../../utils';
 
 const COULEURS_CONSTAT: Record<string, string> = {
   faisable: '#059669',

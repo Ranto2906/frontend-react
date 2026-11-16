@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { lieuService, villeService } from '../../../services';
 import type { Lieu, Ville } from '../../../types';
 import { msgErreur } from '../../../utils';
+import { useToast } from '../../../hooks/useToast';
 
 // ── Types modaux ──
 type Modal =
@@ -19,12 +20,7 @@ export default function GestionLieu() {
   const [villes, setVilles] = useState<Ville[]>([]);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<Modal>(null);
-  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
-
-  const showToast = (msg: string, ok = true) => {
-    setToast({ msg, ok });
-    setTimeout(() => setToast(null), 3000);
-  };
+  const { toast, showToast } = useToast();
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -40,7 +36,7 @@ export default function GestionLieu() {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [showToast]);
 
   useEffect(() => {
     loadData();

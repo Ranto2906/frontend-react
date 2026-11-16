@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { proprieteService, lieuService, villeService, typeProprieteService } from '../../../services';
 import type { Propriete, ProprieteType, Lieu, Ville, PageResponse } from '../../../types';
 import { msgErreur } from '../../../utils';
+import { useToast } from '../../../hooks/useToast';
 
 type Modal =
   | { type: 'create' }
@@ -27,12 +28,7 @@ export default function GestionPropriete() {
   const [currentPage, setCurrentPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<Modal>(null);
-  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
-
-  const showToast = (msg: string, ok = true) => {
-    setToast({ msg, ok });
-    setTimeout(() => setToast(null), 3000);
-  };
+  const { toast, showToast } = useToast();
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -89,7 +85,7 @@ export default function GestionPropriete() {
     } finally {
       setLoading(false);
     }
-  }, [search, selectedVille, numero, localisation, selectedLieu, superficieMin, superficieMax, currentPage]);
+  }, [search, selectedVille, numero, localisation, selectedLieu, superficieMin, superficieMax, currentPage, showToast]);
 
   useEffect(() => { loadData(); }, [loadData]);
 

@@ -1,10 +1,10 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useNavigate, useParams } from 'react-router-dom';
-import { signalementService, villeService, proprieteService, parcelleService, photoService } from '../../services';
+import { signalementService, villeService, proprieteService, parcelleService, photoService } from '../../../services';
 import type {
   Signalement, SignalementRequest, TypeSignalement, StatutSignalement, Ville, Propriete, Parcelle, PhotoDTO,
-} from '../../types';
-import { composerDescriptionAvecProprieteManuelle, extraireProprieteManuelle } from '../../utils/proprieteManuelle';
+} from '../../../types';
+import { composerDescriptionAvecProprieteManuelle, extraireProprieteManuelle } from '../../../utils/proprieteManuelle';
 
 export default function SignalementForm() {
   const { id } = useParams<{ id: string }>();

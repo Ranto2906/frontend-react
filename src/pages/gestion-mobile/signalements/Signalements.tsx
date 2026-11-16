@@ -1,9 +1,9 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Link, useNavigate, useLocation } from 'react-router-dom';
-import { signalementService, villeService } from '../../services';
-import type { Signalement, Ville, PageResponse } from '../../types';
-import { extraireProprieteManuelle } from '../../utils/proprieteManuelle';
-import { msgErreur } from '../../utils';
+import { signalementService, villeService } from '../../../services';
+import type { Signalement, Ville, PageResponse } from '../../../types';
+import { extraireProprieteManuelle } from '../../../utils/proprieteManuelle';
+import { msgErreur } from '../../../utils';
 
 type Modal = { type: 'delete'; sig: Signalement } | null;
 

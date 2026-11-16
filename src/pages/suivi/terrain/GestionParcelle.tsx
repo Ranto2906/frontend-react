@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { parcelleService, proprieteService } from '../../../services';
 import type { Parcelle, Propriete, PageResponse } from '../../../types';
 import { msgErreur } from '../../../utils';
+import { useToast } from '../../../hooks/useToast';
 
 type Modal =
   | { type: 'create' }
@@ -17,12 +18,7 @@ export default function GestionParcelle() {
   const [currentPage, setCurrentPage] = useState(0);
   const [loading, setLoading] = useState(true);
   const [modal, setModal] = useState<Modal>(null);
-  const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null);
-
-  const showToast = (msg: string, ok = true) => {
-    setToast({ msg, ok });
-    setTimeout(() => setToast(null), 3000);
-  };
+  const { toast, showToast } = useToast();
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -39,7 +35,7 @@ export default function GestionParcelle() {
     } finally {
       setLoading(false);
     }
-  }, [currentPage]);
+  }, [currentPage, showToast]);
 
   useEffect(() => { loadData(); }, [loadData]);
 

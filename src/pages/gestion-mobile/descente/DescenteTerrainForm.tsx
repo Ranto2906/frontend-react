@@ -1,11 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate, useParams, Link } from 'react-router-dom';
-import { descenteTerrainService } from '../../services';
+import { descenteTerrainService } from '../../../services';
 import type {
   DescenteTerrainDTO,
   DescenteTerrainRequest,
   DossierDescenteResult,
-} from '../../types';
+} from '../../../types';
 
 const STATUTS_CONSTAT = ['Faisable', 'Non faisable', 'Sous réserve'];
 
